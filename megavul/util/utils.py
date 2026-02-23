@@ -162,8 +162,11 @@ def get_bs4_parsed_html(url: str) -> BeautifulSoup:
 
 
 def get_request_in_json(url: str) -> dict | list:
-    res = __safe_get_request(url)
+    res: Optional[requests.Response] = __safe_get_request(url)
     if res is None: return {}
+    # trace 6
+    # res: requests.Response 
+    # ここでjson.decoder.JSONDecodeErrorで落ちることがある
     return json.loads(res.content)
 
 

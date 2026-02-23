@@ -44,6 +44,8 @@ def child_process_wrapper(queue: multiprocessing.Queue,
         for idx,item in enumerate(chunk):
             if idx > 100 and idx % int(chunk_len * 0.1) == 0:
                 logger.info(f'{prefix_id} [{idx}/{chunk_len}]')
+            # trace1
+            # inner_func(logger, item)
             chunk_result.append(inner_func(logger, item))
     else:
         if (res:= inner_func(logger, chunk)) is not None:

@@ -103,6 +103,7 @@ def find_commits_from_pr_in_gitlab(pr_url: str) -> list[str]:
     def compose_commit_url(commit_hash:str):
         return url_prefix + '/commit/' + commit_hash
     pr_commit_url = pr_url + '/commits.json?page=1&per_page=100'
+    # trace 5
     pr_commit_json = get_request_in_json(pr_commit_url)
     if 'html' not in pr_commit_json:
         return []
@@ -174,9 +175,30 @@ def find_commits_from_gitlab(url:str) -> list[str]:
     if 'issue' in url:
         commits.extend(find_commits_from_issue_in_gitlab(url))
     elif 'merge_requests' in url:
+        # trace 4
+        # find_commits_from_pr_in_gitlab
         commits.extend(find_commits_from_pr_in_gitlab(url))
     return commits
 
+if __name__ == '__main__':
+    # test case
+    print(find_commits_from_gitlab('https://gitlab.com/gnutls/gnutls/merge_requests/657'))
+    print(find_commits_from_gitlab('https://gitlab.com/redhat/centos-stream/rpms/polkit/-/merge_requests/6/diffs?commit_id=bf900df04dc390d389e59aa10942b0f2b15c531e'))
+    print(find_commits_from_gitlab('https://gitlab.com/francoisjacquet/rosariosis/-/issues/291'))
+    print(find_commits_from_gitlab('https://gitlab.com/wireshark/wireshark/-/issues/16887'))
+
+    # mgitlab.com, merge_requests
+    # 落ちない
+    # つまり、以下のURLはJSONをちゃんと返す
+    # https://gitlab.com/Shinobi-Systems/Shinobi/-/merge_requests/286/commits.json?page=1&per_page=100
+    # 手元のブラウザでアクセスするとJSONが返ってくることを確認できた
+    print(find_commits_from_gitlab('https://gitlab.com/Shinobi-Systems/Shinobi/-/merge_requests/286'))
+    # gitlab.gnome.org, merge_requests
+    # 落ちる
+    # つまり、以下のURLはJSONを返さない
+    # https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/merge_requests/121/commits.json?page=1&per_page=100
+    # 手元のブラウザでアクセスすると、DEIN browser wird geprueftみたいな表示のあとJSONが返ってきた
+    print(find_commits_from_gitlab('https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/merge_requests/121'))
 # test case
 # print(find_commits_from_gitlab('https://gitlab.com/gnutls/gnutls/merge_requests/657'))
 # print(find_commits_from_gitlab('https://gitlab.com/redhat/centos-stream/rpms/polkit/-/merge_requests/6/diffs?commit_id=bf900df04dc390d389e59aa10942b0f2b15c531e'))

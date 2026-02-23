@@ -209,6 +209,7 @@ def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[st
                 url = gitlab_url_to_github_url(url)
                 url_result.append(url)
             else:
+                # trace 3
                 gitlab_urls = find_commits_from_gitlab(url)
                 url_result.extend([gitlab_url_to_github_url(url) for url in gitlab_urls])
         elif nloc == 'gitlab.freedesktop.org':
@@ -373,6 +374,8 @@ def parse_single_cve(logger: logging.Logger, cve_row: dict) -> Optional[CveWithR
     last_modify_date = cve_row['lastModified']
     cvss_metric = extract_cvss_metrics(logger, cve_row['metrics'])
     references = filter_duplicate([i['url'] for i in cve_row['references']])
+    # trace 2
+    # mining_commit_urls_from_reference_urls(logger, references)
     extracted_reference_url = filter_duplicate(mining_commit_urls_from_reference_urls(logger, references))
     if DUMP_URL_FLAG:
         process_name = current_process().name
