@@ -73,3 +73,7 @@ class StorageLocation:
     def github_token_path():
         return StorageLocation.base_dir() / 'github_token.txt'
 
+    @staticmethod
+    def gitlab_gnome_token_path() -> Path:
+        return StorageLocation.base_dir() / 'gitlab_gnome_token.txt'
+

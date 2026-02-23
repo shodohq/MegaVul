@@ -24,6 +24,67 @@ if proxies is not None:
     session.proxies = proxies
 gl = gitlab.Gitlab(session=session,timeout=30)
 GITLAB_COMMIT_THRESHOLD = 10
+GITLAB_GNOME_ORG_HOST = 'https://gitlab.gnome.org'
+
+
+def load_gitlab_gnome_token() -> Optional[str]:
+    from megavul.util.storage import StorageLocation
+    path = StorageLocation.gitlab_gnome_token_path()
+    if not path.exists():
+        return None
+    content = path.read_text().strip()
+    return content if content else None
+
+
+def parse_gitlab_url(url: str) -> Optional[dict]:
+    for pattern, url_type in [
+        (r'^(https?://[^/]+)/(.+)/-/merge_requests/(\d+)$', 'merge_request'),
+        (r'^(https?://[^/]+)/(.+)/-/issues/(\d+)$',         'issue'),
+    ]:
+        m = re.match(pattern, url)
+        if m:
+            return {'host': m.group(1), 'project_path': m.group(2),
+                    'iid': int(m.group(3)), 'type': url_type}
+    return None
+
+
+def find_commits_from_mr_via_v4_api(
+    gl_client: gitlab.Gitlab, project_path: str, mr_iid: int
+) -> list[str]:
+    try:
+        project = gl_client.projects.get(project_path)
+        commits = list(project.mergerequests.get(mr_iid).commits())
+        if len(commits) > GITLAB_COMMIT_THRESHOLD:
+            return []
+        return [c.web_url for c in commits]
+    except GitlabGetError:
+        return []
+
+
+def find_commits_from_issue_via_v4_api(
+    gl_client: gitlab.Gitlab, project_path: str, issue_iid: int,
+    host: str = GITLAB_GNOME_ORG_HOST,
+) -> list[str]:
+    try:
+        project = gl_client.projects.get(project_path)
+        issue = project.issues.get(issue_iid)
+        if issue.state != 'closed':
+            return []
+        commit_urls = []
+        for note in issue.notes.list(system=True):
+            body: str = note.body
+            parts = body.split(' ')
+            if 'closed via commit' in body and len(parts) >= 4:
+                commit_urls.append(f'{host}/{project_path}/-/commit/{parts[3]}')
+            elif 'closed via merge request' in body and len(parts) >= 5:
+                pr_id = parts[4].lstrip('!')
+                if re.match(r'^\d+', pr_id):
+                    commit_urls.extend(
+                        find_commits_from_mr_via_v4_api(gl_client, project_path, int(pr_id))
+                    )
+        return [] if len(commit_urls) > GITLAB_COMMIT_THRESHOLD else commit_urls
+    except GitlabGetError:
+        return []
 
 class GitLabPlatformBase(GitPlatformBase):
 
@@ -165,12 +226,26 @@ def find_commits_from_issue_in_gitlab(issue_url : str):
     return commit_urls
 
 def find_commits_from_gitlab(url:str) -> list[str]:
-    if url.find('#') != -1:
+    if '#' in url:
         # https://gitlab.freedesktop.org/dbus/dbus/-/issues/305#note_829128
-        url = url[:url.find('#')]
-    if url.find('/diffs?commit_id') != -1:
+        url = url[:url.index('#')]
+    if '/diffs?commit_id' in url:
         # https://gitlab.com/libtiff/libtiff/merge_requests/33/diffs?commit_id=6da1fb3f64d43be37e640efbec60400d1f1ac39e
-        url = url[:url.find('/diffs?commit_id')]
+        url = url[:url.index('/diffs?commit_id')]
+
+    if url.startswith(GITLAB_GNOME_ORG_HOST):
+        parsed = parse_gitlab_url(url)
+        if parsed is None:
+            return []
+        gl_gnome = gitlab.Gitlab(parsed['host'], private_token=load_gitlab_gnome_token())
+        if parsed['type'] == 'merge_request':
+            return find_commits_from_mr_via_v4_api(gl_gnome, parsed['project_path'], parsed['iid'])
+        elif parsed['type'] == 'issue':
+            return find_commits_from_issue_via_v4_api(
+                gl_gnome, parsed['project_path'], parsed['iid'], host=parsed['host'])
+        return []
+
+    # 既存 legacy パス (gitlab.com 等)
     commits = []
     if 'issue' in url:
         commits.extend(find_commits_from_issue_in_gitlab(url))

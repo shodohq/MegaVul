@@ -5,3 +5,4 @@ megavul/storage/result
 megavul/pipeline/target
 **/__pycache__/
 megavul/github_token.txt
+megavul/gitlab_gnome_token.txt
