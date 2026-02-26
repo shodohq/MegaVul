@@ -64,14 +64,17 @@ else:
 
 
 def read_json_from_network(url: str) -> dict:
+    t0 = time.time()
     content = opener.open(url,timeout=10).read()
     data = json.loads(content)
+    global_logger.debug(f"Read json data from {url} in {time.time() - t0:.2f} seconds")
     return data
 
 
 def safe_read_json_from_network(url: str, sleep_time: int = 3) -> dict:
     while True:
         try:
+            global_logger.debug(f"Trying to read json data from {url}")
             data = read_json_from_network(url)
             return data
         except UnicodeDecodeError as e:
