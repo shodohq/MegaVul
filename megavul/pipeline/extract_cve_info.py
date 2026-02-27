@@ -99,6 +99,8 @@ def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[st
         parse_url = urlparse(url)
         nloc = parse_url.netloc
 
+        global_logger.debug(f"Mining commit url from reference url: {url}")
+
         if nloc == 'github.com':
             commit_urls = find_potential_commits_from_github(logger, url, urls)
             url_result.extend(commit_urls)
