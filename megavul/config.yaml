@@ -15,4 +15,4 @@ crawling_language:
   c_cpp  # [c_cpp, java]
 
 log_level:
-  INFO # [DEBUG, INFO, WARNING, ERROR]
+  DEBUG # [DEBUG, INFO, WARNING, ERROR]
