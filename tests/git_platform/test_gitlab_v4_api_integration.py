@@ -21,8 +21,9 @@ from megavul.git_platform.gitlab_pf import (
 
 # ---------------------------------------------------------------------------
 # Fixtures
+# Fixture: テスト関数に渡す前提条件をセットアップする仕組み。テスト関数の引数名とフィクスチャ名を一致させると、pytest が自動的にフィクスチャを呼び出して値を渡す。
+# def test_hogefuga(pat_token): みたいな関数があればそこに pat_token fixture の値が渡される。
 # ---------------------------------------------------------------------------
-
 @pytest.fixture(scope='module')
 def pat_token() -> str:
     """
