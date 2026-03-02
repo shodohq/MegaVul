@@ -201,20 +201,58 @@ def find_github_pull_and_commit_from_issue(logger: logging.Logger, repo: str, is
     return pull_ids, commit_urls
 
 
-def find_github_commits_from_pull(logger: logging.Logger, repo_name: str, pull_id: int):
-    commit_urls = []
+_RETRYABLE_STATUSES = frozenset({500, 502, 503, 504})
+
+
+def _github_call_with_retry(logger: logging.Logger, description: str, func, retry_limit: int = 3):
+    """
+    func() を呼び出し、一時的なエラー（429, 5xx）ならリトライする。
+    404 など恒久的なエラーはそのまま raise する。
+    """
+    last_exc: GithubException | None = None
+    for attempt in range(retry_limit):
+        try:
+            return func()
+        except GithubException as e:
+            last_exc = e
+            if e.status == 429:
+                retry_after = int(e.headers.get('Retry-After', 60))
+                logger.warning(f'[Github] 429 on {description}, waiting {retry_after}s (attempt {attempt + 1}/{retry_limit})')
+                time.sleep(retry_after)
+            elif e.status in _RETRYABLE_STATUSES:
+                logger.warning(f'[Github] {e.status} on {description} (attempt {attempt + 1}/{retry_limit})')
+                if attempt < retry_limit - 1:
+                    time.sleep(30)
+                else:
+                    raise
+            else:
+                raise
+    assert last_exc is not None
+    raise last_exc
+
+
+def find_github_commits_from_pull(logger: logging.Logger, repo_name: str, pull_id: int) -> list[str]:
     try:
-        repo = random_g().get_repo(repo_name)
-        pull = repo.get_pull(pull_id)
-        commits: PaginatedList[Commit] = pull.get_commits()
-        for c in commits:
-            commit_urls.append(c.html_url)
-        return commit_urls
+        repo = _github_call_with_retry(logger, f'get_repo({repo_name})',
+                                       lambda: random_g().get_repo(repo_name))
     except GithubException as e:
-        if e.status == 404 or e.status == 502:
-            return commit_urls
-        logger.error(f'[Github Exception] Get pull info({repo_name}/{pull_id}) with unknown GithubException:{e}')
-        raise e
+        if e.status == 404:
+            logger.info(f'[Github] Repository not found: {repo_name}')
+            return []
+        raise
+
+    try:
+        pull = _github_call_with_retry(logger, f'get_pull({repo_name}#{pull_id})',
+                                       lambda: repo.get_pull(pull_id))
+    except GithubException as e:
+        if e.status == 404:
+            logger.info(f'[Github] Pull request not found: {repo_name}#{pull_id}')
+            return []
+        raise
+
+    commits = _github_call_with_retry(logger, f'get_commits({repo_name}#{pull_id})',
+                                      lambda: list(pull.get_commits()))
+    return [c.html_url for c in commits]
 
 
 def find_github_commits_from_issue(logger: logging.Logger, repo_name: str, issue_id: int) -> list[str]:
