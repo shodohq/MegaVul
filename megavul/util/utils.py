@@ -170,7 +170,14 @@ def get_request_in_json(url: str) -> dict | list:
     # trace 6
     # res: requests.Response 
     # ここでjson.decoder.JSONDecodeErrorで落ちることがある
-    return json.loads(res.content)
+    # 典型的な理由はGitlabでAntiBotに引っかかっていること。
+    # もしそうなら、そのGitlabでPATを作ってAPI経由でアクセスすれば収集できるが、やや面倒
+    try:
+        json_data = json.loads(res.content)
+        return json_data
+    except json.decoder.JSONDecodeError as e:
+        global_logger.error(f"JSON decode error for url: {url}, error: {e}")
+        return {}
 
 
 def get_request_in_text(url: str) -> str:
