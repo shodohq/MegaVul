@@ -224,8 +224,10 @@ def _github_call_with_retry(logger: logging.Logger, description: str, func, retr
                 if attempt < retry_limit - 1:
                     time.sleep(30)
                 else:
+                    logger.error(f'[Github] {e.status} on {description}, reached retry limit ({retry_limit}), giving up')
                     raise
             else:
+                logger.error(f'[Github] {e.status} on {description}, not retryable, giving up')
                 raise
     assert last_exc is not None
     raise last_exc
@@ -239,6 +241,9 @@ def find_github_commits_from_pull(logger: logging.Logger, repo_name: str, pull_i
         if e.status == 404:
             logger.info(f'[Github] Repository not found: {repo_name}')
             return []
+        if e.status in _RETRYABLE_STATUSES:
+            logger.warning(f'[Github] Temporary error ({e.status}) on get_repo({repo_name}), skipping')
+            return []
         raise
 
     try:
@@ -248,10 +253,19 @@ def find_github_commits_from_pull(logger: logging.Logger, repo_name: str, pull_i
         if e.status == 404:
             logger.info(f'[Github] Pull request not found: {repo_name}#{pull_id}')
             return []
+        if e.status in _RETRYABLE_STATUSES:
+            logger.warning(f'[Github] Temporary error ({e.status}) on get_pull({repo_name}#{pull_id}), skipping')
+            return []
         raise
 
-    commits = _github_call_with_retry(logger, f'get_commits({repo_name}#{pull_id})',
-                                      lambda: list(pull.get_commits()))
+    try:
+        commits = _github_call_with_retry(logger, f'get_commits({repo_name}#{pull_id})',
+                                          lambda: list(pull.get_commits()))
+    except GithubException as e:
+        if e.status in _RETRYABLE_STATUSES:
+            logger.warning(f'[Github] Temporary error ({e.status}) on get_commits({repo_name}#{pull_id}), skipping')
+            return []
+        raise
     return [c.html_url for c in commits]
 
 
