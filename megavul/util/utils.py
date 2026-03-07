@@ -182,6 +182,8 @@ def get_request_in_json(url: str) -> dict | list:
 
 def get_request_in_text(url: str) -> str:
     res = __safe_get_request(url)
+    if res is None:
+        return ''
     return res.text
 
 
