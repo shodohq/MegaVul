@@ -129,6 +129,10 @@ def get_final_redirect_url(url: str) -> str:
         except requests.exceptions.ConnectTimeout:
             time.sleep(10)
             continue
+        except requests.exceptions.ConnectionError:
+            # サーバー側から接続をリセットされた場合（Cloudflareのbot保護など）。
+            # リトライしても改善しないため、リダイレクト解決を諦めて元のURLをそのまま返す。
+            return url
     if res.status_code == 200 or ('Location' not in res.headers.keys()):
         return url
     new_url = res.headers['Location']
