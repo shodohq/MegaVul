@@ -1,6 +1,5 @@
 from datetime import datetime
-from typing import Callable
-import matplotlib
+from typing import Any, Callable
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
@@ -178,7 +177,7 @@ class MetricsGlobalFilter(GlobalFilter):
         month_cve_cnt = self.get_monthly_cve_cnt(cve_cnt)
         year_cve_cnt = self.get_yearly_cve_cnt(cve_cnt)
         fig: Figure
-        axes: list[Axes]
+        axes: Any
         fig, axes = plt.subplots(2, 1, figsize=(10, 8))
         self.simple_chart_plot(
             axes[0], month_cve_cnt[0][:24], month_cve_cnt[1][:24], "Monthly CVE Report"
@@ -189,7 +188,7 @@ class MetricsGlobalFilter(GlobalFilter):
         fig.tight_layout()
         fig.savefig(figure_result_dir / "year_and_month_cve.svg")
 
-    def simple_chart_plot(self, ax: matplotlib.axes.Axes, x: list, y: list, title: str):
+    def simple_chart_plot(self, ax: Axes, x: list, y: list, title: str):
         bar = ax.bar(x, y)
         ax.set_xticklabels(
             x, rotation=30, ha="right", rotation_mode="anchor", fontsize=8
@@ -208,9 +207,7 @@ class MetricsGlobalFilter(GlobalFilter):
         sorted_result = dict(sorted(result.items(), key=lambda x: x[1], reverse=True))
         return list(sorted_result.keys()), list(sorted_result.values())
 
-    def repo_commits_cnt(
-        self, repo_statistics: dict[str, RepositoryMetrics], ax: matplotlib.axes.Axes
-    ):
+    def repo_commits_cnt(self, repo_statistics: dict[str, RepositoryMetrics], ax: Axes):
         repo_names, repo_commits = self.get_sorted_repo_metric(
             repo_statistics, lambda x: len(x.commits)
         )
@@ -222,7 +219,7 @@ class MetricsGlobalFilter(GlobalFilter):
     def repo_vul_func_cnt(
         self,
         repo_statistics: dict[str, RepositoryMetrics],
-        ax: matplotlib.axes.Axes,
+        ax: Axes,
         is_non_vul: bool = False,
     ):
         repo_names, func_cnt = self.get_sorted_repo_metric(
@@ -235,9 +232,7 @@ class MetricsGlobalFilter(GlobalFilter):
             f"{'Non-' if is_non_vul else ''}Vulnerable Function Count",
         )
 
-    def repo_cve_cnt(
-        self, repo_statistics: dict[str, RepositoryMetrics], ax: matplotlib.axes.Axes
-    ):
+    def repo_cve_cnt(self, repo_statistics: dict[str, RepositoryMetrics], ax: Axes):
         repo_names, cve_cnt = self.get_sorted_repo_metric(
             repo_statistics, lambda x: x.cve_cnt
         )
@@ -247,7 +242,7 @@ class MetricsGlobalFilter(GlobalFilter):
 
     def repo_metrics_plot(self, repo_statistics: dict[str, RepositoryMetrics]):
         fig: Figure
-        axes: list[Axes]
+        axes: Any
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10, 8))
 
         self.repo_cve_cnt(repo_statistics, axes[0][0])
@@ -563,7 +558,7 @@ class MetricsGlobalFilter(GlobalFilter):
 
     def cwe_statistic(self, repo_statistics: dict[str, RepositoryMetrics]):
         fig: Figure
-        axes: list[Axes]
+        axes: Any
         fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(10, 8))
 
         sorted_cwe_names = self.get_top_cwe_and_plot(repo_statistics, axes[0][0])

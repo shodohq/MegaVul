@@ -146,7 +146,7 @@ def format_query_find_pull_id_from_issue(repo: str, issue_number: int):
 
 def find_github_pull_and_commit_from_issue(
     logger: logging.Logger, repo: str, issue_number: int
-) -> (list[int], list[str]):
+) -> Tuple[list[int], list[str]]:
     pull_ids = []
     commit_urls = []
 
@@ -431,7 +431,7 @@ def find_potential_commits_from_github(
 
 def find_commit_from_commit_msg_in_github(
     repo_name: str, msg: str, regex_match: str | None = None
-) -> [str]:
+) -> list[str]:
     search_result: PaginatedList = random_g().search_commits(
         query=f"repo:{repo_name} merge:false {msg}"
     )

@@ -102,6 +102,10 @@ class ParserC(ParserCLike):
         if type(parameter_list_signature) is str:
             parameter_list_signature = [parameter_list_signature]
 
+        # parameter_list_signatureがNoneのままの可能性はない。
+        # parameter_list_signature is None ⇔ parameter_list_node is None だが、parameter_list_nodeは上でNoneの可能性があるとき早期リターンしているため。
+        assert isinstance(parameter_list_signature, list)
+
         if type(parameter_list_signature) is list:
             # the parameter_list_signature may be span multilines, so the returned parameter_list_signature is `list` type
             parameter_list_signature = list(
@@ -112,6 +116,9 @@ class ParserC(ParserCLike):
             # remove multiline comment again
             parameter_list_signature = ParserC.remove_comments(parameter_list_signature)
 
+            assert type(parameter_list_signature) is str
+
+        assert type(parameter_list_signature) is str
         parameter_list_signature = parameter_list_signature.replace("\n", "").replace(
             "\t", " "
         )

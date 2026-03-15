@@ -51,8 +51,8 @@ class DotNode:
 class DotGraphGenerator:
     def __init__(self, name="Test"):
         self.name = name
-        self.nodes: [DotNode] = []
-        self.edges: [DotEdge] = []
+        self.nodes: list[DotNode] = []
+        self.edges: list[DotEdge] = []
 
     def node(self, id: int, label: str | None = None):
         self.nodes.append(DotNode(id, label))

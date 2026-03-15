@@ -62,30 +62,30 @@ class TestFindGithubCommitsFromPull:
     PULL_ID = 103993
 
     def test_returns_list(self):
-        result = find_github_commits_from_pull(logger, self.REPO, self.PULL_ID)
+        result = find_github_commits_from_pull(logger, self.REPO, self.PULL_ID)  # pyright: ignore[reportPossiblyUnboundVariable]
         assert isinstance(result, list)
 
     def test_commit_urls_are_valid(self):
-        result = find_github_commits_from_pull(logger, self.REPO, self.PULL_ID)
+        result = find_github_commits_from_pull(logger, self.REPO, self.PULL_ID)  # pyright: ignore[reportPossiblyUnboundVariable]
         assert len(result) > 0, "PR にコミットが1件以上あること"
         for url in result:
             assert is_github_commit_url(url), f"不正な commit URL: {url}"
 
     def test_commit_urls_belong_to_repo(self):
-        result = find_github_commits_from_pull(logger, self.REPO, self.PULL_ID)
+        result = find_github_commits_from_pull(logger, self.REPO, self.PULL_ID)  # pyright: ignore[reportPossiblyUnboundVariable]
         for url in result:
             assert f"github.com/{self.REPO}/commit/" in url, (
                 f"commit URL がリポジトリ {self.REPO} に属していない: {url}"
             )
 
     def test_nonexistent_repo_returns_empty(self):
-        result = find_github_commits_from_pull(
+        result = find_github_commits_from_pull(  # pyright: ignore[reportPossiblyUnboundVariable]
             logger, "nonexistent-user-xyzxyz/nonexistent-repo-xyzxyz", 1
         )
         assert result == []
 
     def test_nonexistent_pull_returns_empty(self):
-        result = find_github_commits_from_pull(logger, self.REPO, 9_999_999)
+        result = find_github_commits_from_pull(logger, self.REPO, 9_999_999)  # pyright: ignore[reportPossiblyUnboundVariable]
         assert result == []
 
 
@@ -104,11 +104,11 @@ class TestFindPotentialCommitsFromGithub:
     PR_URL = "https://github.com/python/cpython/pull/103993"
 
     def test_commit_url_returns_itself(self):
-        result = find_potential_commits_from_github(logger, self.COMMIT_URL, [])
+        result = find_potential_commits_from_github(logger, self.COMMIT_URL, [])  # pyright: ignore[reportPossiblyUnboundVariable]
         assert self.COMMIT_URL in result
 
     def test_pr_url_returns_commit_urls(self):
-        result = find_potential_commits_from_github(logger, self.PR_URL, [])
+        result = find_potential_commits_from_github(logger, self.PR_URL, [])  # pyright: ignore[reportPossiblyUnboundVariable]
         assert isinstance(result, list)
         assert len(result) > 0
         for url in result:
@@ -116,7 +116,7 @@ class TestFindPotentialCommitsFromGithub:
 
     def test_pr_url_skipped_when_commit_already_found(self):
         """同リポジトリの commit URL が url_list にある場合は PR をスキップして [] を返す。"""
-        result = find_potential_commits_from_github(
+        result = find_potential_commits_from_github(  # pyright: ignore[reportPossiblyUnboundVariable]
             logger, self.PR_URL, [self.COMMIT_URL]
         )
         assert result == []
@@ -127,12 +127,12 @@ class TestFindPotentialCommitsFromGithub:
             "https://github.com/python/cpython/pull/103993/commits/"
             "c120bc2d354ca3d27d0c7a53bf65574ddaabaf3a"
         )
-        result = find_potential_commits_from_github(logger, pull_commit_url, [])
+        result = find_potential_commits_from_github(logger, pull_commit_url, [])  # pyright: ignore[reportPossiblyUnboundVariable]
         assert self.COMMIT_URL in result
 
     def test_unrelated_url_returns_empty(self):
         """リポジトリトップなど commit/PR/Issue でない URL は [] を返すこと。"""
-        result = find_potential_commits_from_github(
+        result = find_potential_commits_from_github(  # pyright: ignore[reportPossiblyUnboundVariable]
             logger, "https://github.com/python/cpython", []
         )
         assert result == []
