@@ -44,8 +44,7 @@ class CodeAbstracterBase(metaclass=ABCMeta):
         return build_tree_sitter_language(language, CodeAbstracterBase.DEBUG_MODE)
 
     def get_parser(self, language: str) -> Parser:
-        parser = Parser()
-        parser.set_language(self.__get_language(language))
+        parser = Parser(self.__get_language(language))
         return parser
 
     def abstract_file(self, file_path: Path, language: str):

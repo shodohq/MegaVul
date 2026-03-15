@@ -207,9 +207,7 @@ def find_github_pull_and_commit_from_issue(
                     continue
                 pull_ids.append(n["source"]["number"])  # PR id
             elif node_type == "ReferencedEvent":  # get commit
-                if not (
-                    (not n["isCrossRepository"]) and n["isDirectReference"]
-                ):
+                if not ((not n["isCrossRepository"]) and n["isDirectReference"]):
                     continue
                 commit_urls.append(n["commit"]["url"])
 

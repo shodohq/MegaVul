@@ -1,5 +1,5 @@
 def my_fun():
-    println("Hello, world!") # type: ignore # noqa: F821 
+    println("Hello, world!")  # type: ignore # noqa: F821
 
 
 def main():

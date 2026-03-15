@@ -709,14 +709,24 @@ class MetricsGlobalFilter(GlobalFilter):
         print(f"Year CWE {cve_year_cwe_cnt}")
         print(f"Total Commits {commit_cnt}")
         print(
-            f"Every year commit {dict(sorted(year_commit_count.items(), key=lambda x: (
-                        int(x[0])
-                    ), reverse=False))}"
+            f"Every year commit {
+                dict(
+                    sorted(
+                        year_commit_count.items(),
+                        key=lambda x: int(x[0]),
+                        reverse=False,
+                    )
+                )
+            }"
         )
         print(
-            f"Every year cve {dict(sorted(year_cve_count.items(), key=lambda x: int(
-                        x[0]
-                    ), reverse=False))}"
+            f"Every year cve {
+                dict(
+                    sorted(
+                        year_cve_count.items(), key=lambda x: int(x[0]), reverse=False
+                    )
+                )
+            }"
         )
         repo_top_20, repo_top20_cve_cnt = self.get_sorted_repo_metric(
             repo_statistics, lambda x: x.cve_cnt

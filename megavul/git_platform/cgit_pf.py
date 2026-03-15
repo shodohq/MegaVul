@@ -49,7 +49,7 @@ class CGitPlatformBase(GitPlatformBase):
             commit_info[0].find("td", class_="right").text
         )
         commit_hash = commit_info[2].a.text
-        #tree_hash = commit_info[3].a.text
+        # tree_hash = commit_info[3].a.text
         tree_url = urlparse(f"{base_url}{commit_info[3].a['href']}")
         tree_url = f"{base_url}{tree_url.path}"
         tree_url = tree_url.replace("/tree/", "/plain/")

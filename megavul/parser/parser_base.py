@@ -34,8 +34,8 @@ class ParserBase(metaclass=ABCMeta):
     @cached_property
     def parser(self) -> Parser:
         """set tree-sitter parser"""
-        parser = Parser()
-        parser.set_language(self.language)
+        parser = Parser(self.language)
+
         return parser
 
     def parse_file(self, fp: Path, result_save_path: Path):
