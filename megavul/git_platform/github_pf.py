@@ -582,7 +582,9 @@ class GitHubPlatformBase(GitPlatformBase):
                 # content: list[ContentFile] | ContentFile
                 # このコードって↓どっちを想定してるんだ。
                 # encoding attributeを使ってるってことは ContentFileか?
-                assert not isinstance(content, list), f"content is list, not expected: {f_path} in {repo_name}:{tree_hash}"
+                assert not isinstance(content, list), (
+                    f"content is list, not expected: {f_path} in {repo_name}:{tree_hash}"
+                )
                 if content.encoding != "base64":
                     logger.debug(
                         self.fmt_msg(

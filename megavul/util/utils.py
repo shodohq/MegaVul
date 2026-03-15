@@ -308,12 +308,12 @@ def build_tree_sitter_language(language_name: str, debug_mode=False) -> Language
     if not tree_sitter_so.exists() or debug_mode:
         if multiprocessing.current_process().name != "MainProcess":
             raise RuntimeError("tree-sitter only can build in main process")
-        # in debug mode, we build so library every time
         global_logger.info(
             f"{tree_sitter_name} are in DEBUG mode, will build so library every time."
         )
 
-        # step.1 generate tree-sitter
+        # step.1 generate: grammar.js → src/parser.c を生成
+        tree_sitter_so.parent.mkdir(parents=True, exist_ok=True)
         subprocess.call(
             "tree-sitter generate",
             cwd=tree_sitter_path,
@@ -321,14 +321,73 @@ def build_tree_sitter_language(language_name: str, debug_mode=False) -> Language
             shell=True,
         )
 
-        # step.2 build so library
-        # TODO: ここのbuild_libraryがunknown functionになっているので原因調査
-        Language.build_library(str(tree_sitter_so), [str(tree_sitter_path)])
+        # step.2 compile: src/parser.c (+scanner.c/scanner.cc があれば) を .so にコンパイル
+        include_dir = str(tree_sitter_path / "src")
+        c_src = [str(tree_sitter_path / "src" / "parser.c")]
+        scanner_c = tree_sitter_path / "src" / "scanner.c"
+        if scanner_c.exists():
+            c_src.append(str(scanner_c))
+        subprocess.call(
+            [
+                "cc",
+                "-shared",
+                "-fPIC",
+                "-O2",
+                f"-I{include_dir}",
+                "-o",
+                str(tree_sitter_so),
+            ]
+            + c_src,
+            cwd=tree_sitter_path,
+            env=os.environ.copy(),
+        )
+
+        # C++ 外部スキャナー（scanner.cc）がある場合は c++ でコンパイルして追加リンク
+        scanner_cc = tree_sitter_path / "src" / "scanner.cc"
+        if scanner_cc.exists():
+            scanner_o = tree_sitter_so.with_suffix(".scanner.o")
+            subprocess.call(
+                [
+                    "c++",
+                    "-fPIC",
+                    "-O2",
+                    f"-I{include_dir}",
+                    "-c",
+                    str(scanner_cc),
+                    "-o",
+                    str(scanner_o),
+                ],
+                cwd=tree_sitter_path,
+                env=os.environ.copy(),
+            )
+            # parser.c + scanner.o を改めてリンク
+            subprocess.call(
+                [
+                    "cc",
+                    "-shared",
+                    "-fPIC",
+                    "-O2",
+                    f"-I{include_dir}",
+                    "-o",
+                    str(tree_sitter_so),
+                ]
+                + c_src
+                + [str(scanner_o)],
+                cwd=tree_sitter_path,
+                env=os.environ.copy(),
+            )
 
     if not tree_sitter_so.exists():
         raise RuntimeError(f"{tree_sitter_name} build so library does not exist!")
 
-    return Language(str(tree_sitter_so), language_name)
+    # tree-sitter >= 0.22 の新 API: ctypes で .so をロードし Language に渡す
+    import ctypes
+
+    lib = ctypes.cdll.LoadLibrary(str(tree_sitter_so))
+    fn = getattr(lib, f"tree_sitter_{language_name}")
+    fn.restype = ctypes.c_void_p
+    fn.argtypes = []
+    return Language(fn())
 
 
 def compress_directory_to_zip(compress_directory: Path, output_zip_path: Path):

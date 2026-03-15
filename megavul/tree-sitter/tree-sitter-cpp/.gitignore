@@ -3,4 +3,8 @@ node_modules
 build
 package-lock.json
 /target/
-.build/
+.build/src/parser.c
+src/grammar.json
+src/node-types.json
+src/tree_sitter/
+bindings/
