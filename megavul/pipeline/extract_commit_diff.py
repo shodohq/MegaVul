@@ -1,6 +1,7 @@
 from dataclasses import asdict
 import logging
 from pathlib import Path
+from typing import Literal
 from megavul.git_platform.common import (
     DownloadedCommitInfo,
     CveWithDownloadedCommitInfo,
@@ -222,7 +223,8 @@ def get_file_functions_name_mapping(
 ) -> dict[str, ExtractedFunction]:
     # it's hard to track C++ overload function change if only the function signature changed.
     # so we only track C and C++(function signature no changed) change case.
-    name_mapping: dict[str, ExtractedFunction | int] = {}
+    # valueの型はExtractedFunctionかintのどちらか。intの-1は同名の関数が複数存在することを意味する。
+    name_mapping: dict[str, ExtractedFunction | Literal[-1]] = {}
 
     for f in funcs:
         simple_key = f.func_name
@@ -235,6 +237,7 @@ def get_file_functions_name_mapping(
             # a function with the same name has already appeared before, we should update
             if name_mapping[simple_key] != -1:
                 prev_func = name_mapping[simple_key]
+                assert isinstance(prev_func, ExtractedFunction)
                 name_mapping[simple_key] = -1
                 name_mapping[
                     f"{prev_func.func_name}$$${prev_func.parameter_list_signature}"

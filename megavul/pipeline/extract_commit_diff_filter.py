@@ -22,6 +22,7 @@ def update_commit_info_with_files(
     old_commit: CommitInfo, new_files: list[CommitFile]
 ) -> CommitInfo:
     old_commit = asdict(old_commit)
+    assert isinstance(old_commit, dict)
     old_commit.pop("files")
     return CommitInfo(**old_commit, files=new_files)
 
@@ -30,6 +31,7 @@ def update_cve_with_commits(
     old_cve: CveWithCommitInfo, new_commits: list[CommitInfo]
 ) -> CveWithCommitInfo:
     old_cve = asdict(old_cve)
+    assert isinstance(old_cve, dict)
     old_cve.pop("commits")
     return CveWithCommitInfo(**old_cve, commits=new_commits)
 
@@ -40,6 +42,7 @@ def update_file_with_funcs(
     new_non_vul_funcs: list[NonVulnerableFunction],
 ) -> CommitFile:
     old_file = asdict(old_file)
+    assert isinstance(old_file, dict)
     old_file.pop("vulnerable_functions")
     old_file.pop("non_vulnerable_functions")
     return CommitFile(

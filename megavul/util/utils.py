@@ -322,6 +322,7 @@ def build_tree_sitter_language(language_name: str, debug_mode=False) -> Language
         )
 
         # step.2 build so library
+        # TODO: ここのbuild_libraryがunknown functionになっているので原因調査
         Language.build_library(str(tree_sitter_so), [str(tree_sitter_path)])
 
     if not tree_sitter_so.exists():
