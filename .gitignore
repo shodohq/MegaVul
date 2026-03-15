@@ -6,3 +6,8 @@ megavul/pipeline/target
 **/__pycache__/
 megavul/github_token.txt
 megavul/gitlab_gnome_token.txt
+
+
+# devcontainer
+.devcontainer/.env
+.devcontainer/docker-compose.yaml

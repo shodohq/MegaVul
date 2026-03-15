@@ -1,14 +1,15 @@
 {
   "name": "MegaVul",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "context": ".."
-  },
-  "workspaceFolder": "/workspace",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-  "postCreateCommand": "cd /workspace && uv sync",
+  "dockerComposeFile": "docker-compose.yaml",
+  "service": "devcontainer",
+  // initializeCommand でホスト上の init.sh を実行し、docker-compose.yaml と .env を生成してからコンテナを起動する
+  "initializeCommand": ["bash", ".devcontainer/init.sh"],
+  // ${localWorkspaceFolder} はホスト側のパスそのまま。コンテナ内も同じ絶対パスでマウントされるので一致する
+  "workspaceFolder": "${localWorkspaceFolder}",
+  "postCreateCommand": "git config --global --add safe.directory '*' && uv sync",
   "remoteEnv": {
-    "PATH": "/workspace/.venv/bin:${containerEnv:PATH}"
+    // コンテナ環境変数 CURRENT_WORKSPACE_FOLDER は .env 経由で docker-compose が設定する
+    "PATH": "${containerEnv:CURRENT_WORKSPACE_FOLDER}/.venv/bin:${containerEnv:PATH}"
   },
   "customizations": {
     "vscode": {
@@ -17,7 +18,7 @@
         "ms-toolsai.jupyter"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
+        "python.defaultInterpreterPath": "${localWorkspaceFolder}/.venv/bin/python",
         "terminal.integrated.defaultProfile.linux": "bash"
       }
     }
