@@ -8,6 +8,10 @@ megavul/github_token.txt
 megavul/gitlab_gnome_token.txt
 
 
+# claude
+# 入れといてもいいのかもしれないけど、入れないことによる損はそこまで大きくないはず。
+.claude/
+
 # devcontainer
 .devcontainer/.env
 .devcontainer/docker-compose.yaml
