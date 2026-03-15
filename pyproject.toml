@@ -1,8 +1,9 @@
 [project]
 name = "megavul"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.0.1"
+description = "A Continuously Updated C/C++/Java Function-Level Vulnerability Dataset"
 readme = "README.md"
+license = "GPL-3.0-only"
 requires-python = ">=3.13"
 dependencies = [
     "bs4>=0.0.2",
@@ -29,6 +30,9 @@ dev = [
     "pytest-mock>=3.14.0",
     "ruff>=0.15.6",
 ]
+
+[tool.setuptools.packages.find]
+include = ["megavul*"]
 
 [tool.uv]
 # editableインストールする
