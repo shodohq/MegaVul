@@ -46,7 +46,7 @@ def find_sourceware_commit_from_comment(sourceware_url: str) -> list[str]:
     return commits_result
 
 
-def find_xen_commit_from_advisory(advisory_url: str) -> [str]:
+def find_xen_commit_from_advisory(advisory_url: str) -> list[str]:
     advisory_page = get_bs4_parsed_html(advisory_url)
     table = advisory_page.find("table")
     if table is None:
@@ -124,7 +124,7 @@ def find_chromium_commit_from_viewvc(viewvc_url: str) -> Optional[str]:
         return None
 
 
-def find_url_from_debian_security_tracker(security_tracker_url: str) -> [str]:
+def find_url_from_debian_security_tracker(security_tracker_url: str) -> list[str]:
     page = get_bs4_parsed_html(security_tracker_url)
     node_contents = page.find("pre")
     if node_contents is None:
@@ -140,7 +140,7 @@ def find_url_from_debian_security_tracker(security_tracker_url: str) -> [str]:
     return commit_threshold_return(url_result)
 
 
-def find_commit_from_moodle_discuss(discuss_url: str) -> [str]:
+def find_commit_from_moodle_discuss(discuss_url: str) -> list[str]:
     discuss_page = get_bs4_parsed_html(discuss_url)
     post_content = discuss_page.find("div", class_="post-content-container")
     if post_content is None:
@@ -160,7 +160,7 @@ def find_commit_from_moodle_discuss(discuss_url: str) -> [str]:
     return commit_threshold_return(url_result)
 
 
-def find_commit_from_php_issue(php_issue_url: str) -> [str]:
+def find_commit_from_php_issue(php_issue_url: str) -> list[str]:
     assert "bug.php?id=" in php_issue_url
     php_issue_page = get_bs4_parsed_html(php_issue_url)
     commit_hash_set = set()
@@ -180,7 +180,7 @@ def find_commit_from_php_issue(php_issue_url: str) -> [str]:
     return commit_urls
 
 
-def find_commit_from_rustsec(sec_url: str) -> [str]:
+def find_commit_from_rustsec(sec_url: str) -> list[str]:
     page = get_bs4_parsed_html(sec_url)
     page.find("dl")
     dts = page.find_all("dt")
@@ -194,7 +194,7 @@ def find_commit_from_rustsec(sec_url: str) -> [str]:
     return url_result
 
 
-def find_commit_from_gnome_bugzilla(gnome_url: str) -> [str]:
+def find_commit_from_gnome_bugzilla(gnome_url: str) -> list[str]:
     assert "bugzilla.gnome.org/show_bug.cgi" in gnome_url
 
     commits_result = []
@@ -245,7 +245,7 @@ def find_commit_from_gnome_bugzilla(gnome_url: str) -> [str]:
     return commits_result
 
 
-def find_commit_from_ghostscript_bugzilla(ghost_url: str) -> [str]:
+def find_commit_from_ghostscript_bugzilla(ghost_url: str) -> list[str]:
     assert "bugs.ghostscript.com/show_bug.cgi" in ghost_url
 
     commits_result = []
