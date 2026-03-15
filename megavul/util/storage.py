@@ -1,16 +1,18 @@
 from pathlib import Path
 from typing import Callable
 
+
 def path_exists_checker(func: Callable[..., Path]) -> Callable[..., Path]:
     def wrapper_func(*args, **kwargs) -> Path:
         path = func(*args, **kwargs)
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
         return path
+
     return wrapper_func
 
-class StorageLocation:
 
+class StorageLocation:
     @staticmethod
     def base_dir() -> Path:
         return Path(__file__).parent.parent
@@ -18,28 +20,27 @@ class StorageLocation:
     @staticmethod
     @path_exists_checker
     def storage_dir() -> Path:
-        return StorageLocation.base_dir() / 'storage'
+        return StorageLocation.base_dir() / "storage"
 
     @staticmethod
     @path_exists_checker
     def result_dir() -> Path:
-        return StorageLocation.storage_dir() / 'result'
+        return StorageLocation.storage_dir() / "result"
 
     @staticmethod
     @path_exists_checker
-    def pl_result_dir(crawling_language:str) -> Path:
+    def pl_result_dir(crawling_language: str) -> Path:
         return StorageLocation.result_dir() / crawling_language
 
     @staticmethod
     @path_exists_checker
     def debug_dir() -> Path:
-        return StorageLocation.result_dir() / 'debug'
-
+        return StorageLocation.result_dir() / "debug"
 
     @staticmethod
     @path_exists_checker
     def cache_dir() -> Path:
-        return StorageLocation.storage_dir() / 'cache'
+        return StorageLocation.storage_dir() / "cache"
 
     @staticmethod
     @path_exists_checker
@@ -49,31 +50,29 @@ class StorageLocation:
     @staticmethod
     @path_exists_checker
     def logging_dir() -> Path:
-        return StorageLocation.storage_dir() / 'logging'
-
+        return StorageLocation.storage_dir() / "logging"
 
     @staticmethod
     @path_exists_checker
     def tree_sitter_dir() -> Path:
-        return StorageLocation.base_dir() / 'tree-sitter'
+        return StorageLocation.base_dir() / "tree-sitter"
 
     @staticmethod
     def joern_dir() -> Path:
-        return StorageLocation.base_dir() / 'joern'
+        return StorageLocation.base_dir() / "joern"
 
     @staticmethod
     def scala_script_dir() -> Path:
-        return StorageLocation.base_dir() / 'scala'
+        return StorageLocation.base_dir() / "scala"
 
     @staticmethod
     def config_path():
-        return StorageLocation.base_dir() / 'config.yaml'
+        return StorageLocation.base_dir() / "config.yaml"
 
     @staticmethod
     def github_token_path():
-        return StorageLocation.base_dir() / 'github_token.txt'
+        return StorageLocation.base_dir() / "github_token.txt"
 
     @staticmethod
     def gitlab_gnome_token_path() -> Path:
-        return StorageLocation.base_dir() / 'gitlab_gnome_token.txt'
-
+        return StorageLocation.base_dir() / "gitlab_gnome_token.txt"

@@ -8,10 +8,17 @@ import gitlab
 import requests
 from gitlab.v4.objects import Project
 
-from megavul.git_platform.common import CommitInfo, trunc_commit_file_name, \
-    try_decode_binary_data_and_write_to_file, RawCommitInfo
-from megavul.util.utils import get_bs4_parsed_html, get_request_in_json, check_file_exists_and_not_empty, \
-    get_unix_time_from_git_date_gitlab
+from megavul.git_platform.common import (
+    trunc_commit_file_name,
+    try_decode_binary_data_and_write_to_file,
+    RawCommitInfo,
+)
+from megavul.util.utils import (
+    get_bs4_parsed_html,
+    get_request_in_json,
+    check_file_exists_and_not_empty,
+    get_unix_time_from_git_date_gitlab,
+)
 import bs4
 import re
 from megavul.git_platform.git_platform_base import GitPlatformBase
@@ -22,13 +29,14 @@ import urllib3.exceptions
 session = requests.Session()
 if proxies is not None:
     session.proxies = proxies
-gl = gitlab.Gitlab(session=session,timeout=30)
+gl = gitlab.Gitlab(session=session, timeout=30)
 GITLAB_COMMIT_THRESHOLD = 10
-GITLAB_GNOME_ORG_HOST = 'https://gitlab.gnome.org'
+GITLAB_GNOME_ORG_HOST = "https://gitlab.gnome.org"
 
 
 def load_gitlab_gnome_token() -> Optional[str]:
     from megavul.util.storage import StorageLocation
+
     path = StorageLocation.gitlab_gnome_token_path()
     if not path.exists():
         return None
@@ -38,13 +46,17 @@ def load_gitlab_gnome_token() -> Optional[str]:
 
 def parse_gitlab_url(url: str) -> Optional[dict]:
     for pattern, url_type in [
-        (r'^(https?://[^/]+)/(.+)/-/merge_requests/(\d+)$', 'merge_request'),
-        (r'^(https?://[^/]+)/(.+)/-/issues/(\d+)$',         'issue'),
+        (r"^(https?://[^/]+)/(.+)/-/merge_requests/(\d+)$", "merge_request"),
+        (r"^(https?://[^/]+)/(.+)/-/issues/(\d+)$", "issue"),
     ]:
         m = re.match(pattern, url)
         if m:
-            return {'host': m.group(1), 'project_path': m.group(2),
-                    'iid': int(m.group(3)), 'type': url_type}
+            return {
+                "host": m.group(1),
+                "project_path": m.group(2),
+                "iid": int(m.group(3)),
+                "type": url_type,
+            }
     return None
 
 
@@ -62,73 +74,116 @@ def find_commits_from_mr_via_v4_api(
 
 
 def find_commits_from_issue_via_v4_api(
-    gl_client: gitlab.Gitlab, project_path: str, issue_iid: int,
+    gl_client: gitlab.Gitlab,
+    project_path: str,
+    issue_iid: int,
     host: str = GITLAB_GNOME_ORG_HOST,
 ) -> list[str]:
     try:
         project = gl_client.projects.get(project_path)
         issue = project.issues.get(issue_iid)
-        if issue.state != 'closed':
+        if issue.state != "closed":
             return []
         commit_urls = []
         for note in issue.notes.list(system=True):
             body: str = note.body
-            parts = body.split(' ')
-            if 'closed via commit' in body and len(parts) >= 4:
-                commit_urls.append(f'{host}/{project_path}/-/commit/{parts[3]}')
-            elif 'closed via merge request' in body and len(parts) >= 5:
-                pr_id = parts[4].lstrip('!')
-                if re.match(r'^\d+', pr_id):
+            parts = body.split(" ")
+            if "closed via commit" in body and len(parts) >= 4:
+                commit_urls.append(f"{host}/{project_path}/-/commit/{parts[3]}")
+            elif "closed via merge request" in body and len(parts) >= 5:
+                pr_id = parts[4].lstrip("!")
+                if re.match(r"^\d+", pr_id):
                     commit_urls.extend(
-                        find_commits_from_mr_via_v4_api(gl_client, project_path, int(pr_id))
+                        find_commits_from_mr_via_v4_api(
+                            gl_client, project_path, int(pr_id)
+                        )
                     )
         return [] if len(commit_urls) > GITLAB_COMMIT_THRESHOLD else commit_urls
     except GitlabGetError:
         return []
 
-class GitLabPlatformBase(GitPlatformBase):
 
+class GitLabPlatformBase(GitPlatformBase):
     @property
     def platform_name(self) -> str:
         return "GitLab"
 
-    def get_raw_commit_info(self, logger: logging.Logger, url: str) -> Optional[RawCommitInfo]:
-        re_result = re.match(r"https://gitlab.com/(?P<owner>.*)/(?P<repo>.*)/-/commit/(?P<commit_hash>.*)", url)
-        if re_result is None: return None
-        owner =re_result.group('owner')
-        repo = re_result.group('repo')
-        commit_hash = re_result.group('commit_hash')
-        repo_name = f'{owner}/{repo}'
+    def get_raw_commit_info(
+        self, logger: logging.Logger, url: str
+    ) -> Optional[RawCommitInfo]:
+        re_result = re.match(
+            r"https://gitlab.com/(?P<owner>.*)/(?P<repo>.*)/-/commit/(?P<commit_hash>.*)",
+            url,
+        )
+        if re_result is None:
+            return None
+        owner = re_result.group("owner")
+        repo = re_result.group("repo")
+        commit_hash = re_result.group("commit_hash")
+        repo_name = f"{owner}/{repo}"
 
         while True:
             try:
                 project: Project = gl.projects.get(repo_name)
                 commit = project.commits.get(commit_hash)
                 commit_json: dict = commit.asdict()
-                parent_commit_hash = commit_json['parent_ids'][0] if len(commit_json['parent_ids']) == 1 else None
-                commit_msg = commit_json['message']
-                commit_date = get_unix_time_from_git_date_gitlab(commit_json['authored_date'])
+                parent_commit_hash = (
+                    commit_json["parent_ids"][0]
+                    if len(commit_json["parent_ids"]) == 1
+                    else None
+                )
+                commit_msg = commit_json["message"]
+                commit_date = get_unix_time_from_git_date_gitlab(
+                    commit_json["authored_date"]
+                )
                 file_paths = []
                 for diff in commit.diff(get_all=True):
-                    file_paths.append(diff['new_path'])
-                git_url = commit_json['web_url']
+                    file_paths.append(diff["new_path"])
+                git_url = commit_json["web_url"]
 
                 return RawCommitInfo(
-                    repo_name, commit_msg, commit_hash, parent_commit_hash, commit_date, file_paths, None, git_url
+                    repo_name,
+                    commit_msg,
+                    commit_hash,
+                    parent_commit_hash,
+                    commit_date,
+                    file_paths,
+                    None,
+                    git_url,
                 )
             except GitlabGetError as e:
-                logger.info(self.fmt_msg(f'{repo_name}:{commit_hash} {e.error_message}'))
+                logger.info(
+                    self.fmt_msg(f"{repo_name}:{commit_hash} {e.error_message}")
+                )
                 return None
-            except (urllib3.exceptions.MaxRetryError,requests.exceptions.SSLError,urllib3.exceptions.RequestError, requests.exceptions.ConnectionError) as e:
-                logger.info(self.fmt_msg(f'{repo_name}:{commit_hash} {url} max retries exceeded or SSL error, retry again '))
+            except (
+                urllib3.exceptions.MaxRetryError,
+                requests.exceptions.SSLError,
+                urllib3.exceptions.RequestError,
+                requests.exceptions.ConnectionError,
+            ):
+                logger.info(
+                    self.fmt_msg(
+                        f"{repo_name}:{commit_hash} {url} max retries exceeded or SSL error, retry again "
+                    )
+                )
                 continue
 
-    def download_commit_with_save_dir(self, logger: logging.Logger, raw_commit_info: RawCommitInfo,
-                                      need_download_file_paths: list[str], download_parent_commit: bool,
-                                      save_dir: Path) -> list[str]:
+    def download_commit_with_save_dir(
+        self,
+        logger: logging.Logger,
+        raw_commit_info: RawCommitInfo,
+        need_download_file_paths: list[str],
+        download_parent_commit: bool,
+        save_dir: Path,
+    ) -> list[str]:
         repo_name = raw_commit_info.repo_name
         already_download_files = []
-        tree_hash = raw_commit_info.parent_commit_hash if download_parent_commit else raw_commit_info.commit_hash
+        tree_hash = (
+            raw_commit_info.parent_commit_hash
+            if download_parent_commit
+            else raw_commit_info.commit_hash
+        )
         repo = None
 
         for f_path in need_download_file_paths:
@@ -142,138 +197,205 @@ class GitLabPlatformBase(GitPlatformBase):
                     if repo is None:
                         repo = gl.projects.get(repo_name)
                     file_content_b = repo.files.raw(f_path, ref=tree_hash)
-                    try_decode_binary_data_and_write_to_file(file_content_b, save_dir / trunc_name)
+                    try_decode_binary_data_and_write_to_file(
+                        file_content_b, save_dir / trunc_name
+                    )
                     already_download_files.append(f_path)
                 except GitlabGetError as e:
-                    logger.info(self.fmt_msg(f'{repo_name}:{tree_hash} {f_path} {e.error_message}'))
-                except (urllib3.exceptions.MaxRetryError, requests.exceptions.SSLError,requests.exceptions.ConnectionError) as e:
-                    logger.info(self.fmt_msg(f'{repo_name}:{tree_hash} max retries exceeded or SSL error, retry again'))
+                    logger.info(
+                        self.fmt_msg(
+                            f"{repo_name}:{tree_hash} {f_path} {e.error_message}"
+                        )
+                    )
+                except (
+                    urllib3.exceptions.MaxRetryError,
+                    requests.exceptions.SSLError,
+                    requests.exceptions.ConnectionError,
+                ):
+                    logger.info(
+                        self.fmt_msg(
+                            f"{repo_name}:{tree_hash} max retries exceeded or SSL error, retry again"
+                        )
+                    )
                     time.sleep(5)
                     continue
                 break
 
         return already_download_files
 
-    def can_handle_this_url(self, logger: logging.Logger, url: str, url_netloc: str) -> bool:
-        return url_netloc == 'gitlab.com'
+    def can_handle_this_url(
+        self, logger: logging.Logger, url: str, url_netloc: str
+    ) -> bool:
+        return url_netloc == "gitlab.com"
 
 
 def find_commits_from_pr_in_gitlab(pr_url: str) -> list[str]:
-    assert 'merge_requests' in pr_url
-    url_prefix = '/'.join(pr_url.split('/')[:-2])
-    def compose_commit_url(commit_hash:str):
-        return url_prefix + '/commit/' + commit_hash
-    pr_commit_url = pr_url + '/commits.json?page=1&per_page=100'
+    assert "merge_requests" in pr_url
+    url_prefix = "/".join(pr_url.split("/")[:-2])
+
+    def compose_commit_url(commit_hash: str):
+        return url_prefix + "/commit/" + commit_hash
+
+    pr_commit_url = pr_url + "/commits.json?page=1&per_page=100"
     # trace 5
     pr_commit_json = get_request_in_json(pr_commit_url)
-    if 'html' not in pr_commit_json:
+    if "html" not in pr_commit_json:
         return []
-    pr_page = bs4.BeautifulSoup(
-        pr_commit_json['html'], 'html.parser'
-    )
+    pr_page = bs4.BeautifulSoup(pr_commit_json["html"], "html.parser")
     commit_urls = []
-    for item in pr_page.find_all(class_='commit-row-message item-title js-onboarding-commit-item'):
-        commit_hash = item['href'].split('commit_id=')[1]
+    for item in pr_page.find_all(
+        class_="commit-row-message item-title js-onboarding-commit-item"
+    ):
+        commit_hash = item["href"].split("commit_id=")[1]
         commit_urls.append(compose_commit_url(commit_hash))
-    if len(commit_urls) > GITLAB_COMMIT_THRESHOLD:   # drop big PR
+    if len(commit_urls) > GITLAB_COMMIT_THRESHOLD:  # drop big PR
         return []
     return commit_urls
 
-def find_commits_from_issue_in_gitlab(issue_url : str):
-    assert 'issues' in issue_url
-    url_prefix = '/'.join(issue_url.split('/')[:-2])
-    def compose_commit_url(commit_hash:str):
-        return url_prefix + '/commit/' + commit_hash
-    def compose_pr_url(pr_id:str):
-        return url_prefix + '/merge_requests/' + pr_id
+
+def find_commits_from_issue_in_gitlab(issue_url: str):
+    assert "issues" in issue_url
+    url_prefix = "/".join(issue_url.split("/")[:-2])
+
+    def compose_commit_url(commit_hash: str):
+        return url_prefix + "/commit/" + commit_hash
+
+    def compose_pr_url(pr_id: str):
+        return url_prefix + "/merge_requests/" + pr_id
+
     issue_page = get_bs4_parsed_html(issue_url)
     # print(issue_page)
-    if issue_page.find(id='js-issuable-app') is None or issue_page.find(id='js-vue-notes') is None:
+    if (
+        issue_page.find(id="js-issuable-app") is None
+        or issue_page.find(id="js-vue-notes") is None
+    ):
         return []
-    old_issue_header = json.loads(issue_page.find(id='js-issuable-app').attrs['data-initial'])
+    old_issue_header = json.loads(
+        issue_page.find(id="js-issuable-app").attrs["data-initial"]
+    )
     # compatible with official version GitLab
-    new_issue_header = json.loads(issue_page.find(id='js-vue-notes').attrs['data-noteable-data'])
-    issue_state =   old_issue_header['state']  if 'state' in old_issue_header.keys() else new_issue_header['state']
-    if issue_state != 'closed':
+    new_issue_header = json.loads(
+        issue_page.find(id="js-vue-notes").attrs["data-noteable-data"]
+    )
+    issue_state = (
+        old_issue_header["state"]
+        if "state" in old_issue_header.keys()
+        else new_issue_header["state"]
+    )
+    if issue_state != "closed":
         return []
 
     # gitlab issue content return in JSON format
     # e.g. https://gitlab.gnome.org/GNOME/gimp/-/issues/8230/discussions.json?per_page=100
-    issue_content = get_request_in_json(issue_url + '/discussions.json?per_page=100')
+    issue_content = get_request_in_json(issue_url + "/discussions.json?per_page=100")
     commit_urls = []
 
     for item in issue_content:
-        for note in item['notes']:
-            if 'system_note_icon_name' in note and note['system_note_icon_name'] == 'issue-close':
+        for note in item["notes"]:
+            if (
+                "system_note_icon_name" in note
+                and note["system_note_icon_name"] == "issue-close"
+            ):
                 # note['type'] may be null
-                note_text = note['note']
-                if 'closed via commit' in note_text:
+                note_text = note["note"]
+                if "closed via commit" in note_text:
                     # close issue via commit
                     # e.g. closed via commit 22af0bcfe67c1c86381f33975ca7fdbde6b36b39
-                    commit_hash = note_text.split(' ')[3]
+                    commit_hash = note_text.split(" ")[3]
                     commit_urls.append(compose_commit_url(commit_hash))
-                elif 'closed via merge request' in note_text:
+                elif "closed via merge request" in note_text:
                     # close issue via PR
                     # e.g. closed via merge request !3163
-                    pr_id : str = note_text.split(' ')[4]
-                    if re.match(r'(^!\d+)|(\d+)',pr_id) is not None:
-                        if pr_id.startswith('!'):
+                    pr_id: str = note_text.split(" ")[4]
+                    if re.match(r"(^!\d+)|(\d+)", pr_id) is not None:
+                        if pr_id.startswith("!"):
                             pr_id = pr_id[1:]
-                        commit_urls.extend(find_commits_from_pr_in_gitlab(compose_pr_url(pr_id)))
+                        commit_urls.extend(
+                            find_commits_from_pr_in_gitlab(compose_pr_url(pr_id))
+                        )
 
-    if len(commit_urls) > GITLAB_COMMIT_THRESHOLD:   # drop big commits
+    if len(commit_urls) > GITLAB_COMMIT_THRESHOLD:  # drop big commits
         return []
     return commit_urls
 
-def find_commits_from_gitlab(url:str) -> list[str]:
-    if '#' in url:
+
+def find_commits_from_gitlab(url: str) -> list[str]:
+    if "#" in url:
         # https://gitlab.freedesktop.org/dbus/dbus/-/issues/305#note_829128
-        url = url[:url.index('#')]
-    if '/diffs?commit_id' in url:
+        url = url[: url.index("#")]
+    if "/diffs?commit_id" in url:
         # https://gitlab.com/libtiff/libtiff/merge_requests/33/diffs?commit_id=6da1fb3f64d43be37e640efbec60400d1f1ac39e
-        url = url[:url.index('/diffs?commit_id')]
+        url = url[: url.index("/diffs?commit_id")]
 
     if url.startswith(GITLAB_GNOME_ORG_HOST):
         parsed = parse_gitlab_url(url)
         if parsed is None:
             return []
-        gl_gnome = gitlab.Gitlab(parsed['host'], private_token=load_gitlab_gnome_token())
-        if parsed['type'] == 'merge_request':
-            return find_commits_from_mr_via_v4_api(gl_gnome, parsed['project_path'], parsed['iid'])
-        elif parsed['type'] == 'issue':
+        gl_gnome = gitlab.Gitlab(
+            parsed["host"], private_token=load_gitlab_gnome_token()
+        )
+        if parsed["type"] == "merge_request":
+            return find_commits_from_mr_via_v4_api(
+                gl_gnome, parsed["project_path"], parsed["iid"]
+            )
+        elif parsed["type"] == "issue":
             return find_commits_from_issue_via_v4_api(
-                gl_gnome, parsed['project_path'], parsed['iid'], host=parsed['host'])
+                gl_gnome, parsed["project_path"], parsed["iid"], host=parsed["host"]
+            )
         return []
 
     # 既存 legacy パス (gitlab.com 等)
     commits = []
-    if 'issue' in url:
+    if "issue" in url:
         commits.extend(find_commits_from_issue_in_gitlab(url))
-    elif 'merge_requests' in url:
+    elif "merge_requests" in url:
         # trace 4
         # find_commits_from_pr_in_gitlab
         commits.extend(find_commits_from_pr_in_gitlab(url))
     return commits
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # test case
-    print(find_commits_from_gitlab('https://gitlab.com/gnutls/gnutls/merge_requests/657'))
-    print(find_commits_from_gitlab('https://gitlab.com/redhat/centos-stream/rpms/polkit/-/merge_requests/6/diffs?commit_id=bf900df04dc390d389e59aa10942b0f2b15c531e'))
-    print(find_commits_from_gitlab('https://gitlab.com/francoisjacquet/rosariosis/-/issues/291'))
-    print(find_commits_from_gitlab('https://gitlab.com/wireshark/wireshark/-/issues/16887'))
+    print(
+        find_commits_from_gitlab("https://gitlab.com/gnutls/gnutls/merge_requests/657")
+    )
+    print(
+        find_commits_from_gitlab(
+            "https://gitlab.com/redhat/centos-stream/rpms/polkit/-/merge_requests/6/diffs?commit_id=bf900df04dc390d389e59aa10942b0f2b15c531e"
+        )
+    )
+    print(
+        find_commits_from_gitlab(
+            "https://gitlab.com/francoisjacquet/rosariosis/-/issues/291"
+        )
+    )
+    print(
+        find_commits_from_gitlab(
+            "https://gitlab.com/wireshark/wireshark/-/issues/16887"
+        )
+    )
 
     # mgitlab.com, merge_requests
     # 落ちない
     # つまり、以下のURLはJSONをちゃんと返す
     # https://gitlab.com/Shinobi-Systems/Shinobi/-/merge_requests/286/commits.json?page=1&per_page=100
     # 手元のブラウザでアクセスするとJSONが返ってくることを確認できた
-    print(find_commits_from_gitlab('https://gitlab.com/Shinobi-Systems/Shinobi/-/merge_requests/286'))
+    print(
+        find_commits_from_gitlab(
+            "https://gitlab.com/Shinobi-Systems/Shinobi/-/merge_requests/286"
+        )
+    )
     # gitlab.gnome.org, merge_requests
     # 落ちる
     # つまり、以下のURLはJSONを返さない
     # https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/merge_requests/121/commits.json?page=1&per_page=100
     # 手元のブラウザでアクセスすると、DEIN browser wird geprueftみたいな表示のあとJSONが返ってきた
-    print(find_commits_from_gitlab('https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/merge_requests/121'))
+    print(
+        find_commits_from_gitlab(
+            "https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/merge_requests/121"
+        )
+    )
 # test case
 # print(find_commits_from_gitlab('https://gitlab.com/gnutls/gnutls/merge_requests/657'))
 # print(find_commits_from_gitlab('https://gitlab.com/redhat/centos-stream/rpms/polkit/-/merge_requests/6/diffs?commit_id=bf900df04dc390d389e59aa10942b0f2b15c531e'))

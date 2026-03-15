@@ -7,7 +7,7 @@ from megavul.pipeline.flatten_megavul import generate_megavul
 from megavul.util.logging_util import global_logger
 from megavul.util.config import crawling_language
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     global_logger.info(f"MegaVul is now crawling {crawling_language}")
 
     # step.1 crawl all CVEs from NVD

@@ -71,7 +71,7 @@ def crawl_nvd(use_cache: bool = True):
             cache_page_dir.mkdir(exist_ok=True)
         else:
             global_logger.info(
-                f"Try to download the latest NVD database, ignoring the cache"
+                "Try to download the latest NVD database, ignoring the cache"
             )
 
     # rolling windowで制限されているRate limitをできるだけ有効に活用するためにQUEUEで管理する
