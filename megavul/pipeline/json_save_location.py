@@ -6,6 +6,7 @@ pl_result_dir = StorageLocation.pl_result_dir(crawling_language)
 
 # common result
 all_cve_from_nvd_json_path = result_dir / "all_cve_from_nvd.json"
+nvd_crawl_metadata_json_path = result_dir / "nvd_crawl_metadata.json"
 cve_with_reference_url_json_path = result_dir / "cve_with_reference_url.json"
 
 # results for each crawling language
