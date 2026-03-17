@@ -212,21 +212,27 @@ class ParserCpp(ParserCLike):
         if id_node is not None:
             while id_node.type == "pointer_declarator":
                 id_node = id_node.children[1]
-            id = node_split_from_file(file_lines, id_node)
-            pd_lines = ParserCpp.multiline_replace(
-                pd_lines,
-                ParserCpp.cal_relative_point(pd_start_point, id_node.start_point),
-                id,
-            )
+            id_raw = node_split_from_file(file_lines, id_node)
+            if isinstance(id_raw, list):
+                # 複数行にまたがる宣言子は位置マーキングをスキップ
+                id = None
+            else:
+                id = id_raw
+                pd_lines = ParserCpp.multiline_replace(
+                    pd_lines,
+                    ParserCpp.cal_relative_point(pd_start_point, id_node.start_point),
+                    id,
+                )
 
         pd_lines = "".join(pd_lines).replace("\n", "").replace("\t", " ")
         pd_lines = ParserCpp.remove_comments(pd_lines)
         default_value = None
         if (re_res := re.search(r"=.*", pd_lines)) is not None:
             default_value = re_res.group()
+        if default_value is None:
+            default_value = ""
         type = pd_lines.replace(self.SPECIAL_IDENTIFIER, "").replace(default_value, "")
         type = type.strip()
-        assert default_value is not None
         return (
             type,
             id,

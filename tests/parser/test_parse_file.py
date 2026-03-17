@@ -182,18 +182,7 @@ class TestParserCpp:
 
 
 class TestParserCppRegression:
-    @pytest.mark.xfail(
-        raises=TypeError,
-        reason=(
-            "複数行にまたがるパラメータ宣言子で node_split_from_file が list[str] を返し、"
-            "multiline_replace の replace_id が str でなくなる既知のバグ "
-            "(parser_cpp.py:traverse_optional_parameter_declaration)"
-        ),
-    )
     def test_parse_cpp_httplib_does_not_crash(self, parser_cpp, tmp_path):
-        """yhirose/cpp-httplib の test.cc がクラッシュなく解析できる。
-
-        修正後は xfail マークを外して通常テストにする。
-        """
+        """yhirose/cpp-httplib の test.cc がクラッシュなく解析できる。"""
         funcs = run_parse_file(parser_cpp, CPP_HTTPLIB_TEST_CC, tmp_path)
         assert len(funcs) > 0
