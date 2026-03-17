@@ -65,19 +65,22 @@ else:
     load_dependencies(config_file["dependencies"])
 
 
-def read_json_from_network(url: str) -> dict:
+def read_json_from_network(url: str, headers: dict | None = None) -> dict:
     t0 = time.time()
-    content = opener.open(url, timeout=10).read()
+    req = urllib.request.Request(url, headers=headers or {})
+    content = opener.open(req, timeout=10).read()
     data = json.loads(content)
     global_logger.debug(f"Read json data from {url} in {time.time() - t0:.2f} seconds")
     return data
 
 
-def safe_read_json_from_network(url: str, sleep_time: int = 3) -> dict:
+def safe_read_json_from_network(
+    url: str, sleep_time: int = 3, headers: dict | None = None
+) -> dict:
     while True:
         try:
             global_logger.debug(f"Trying to read json data from {url}")
-            data = read_json_from_network(url)
+            data = read_json_from_network(url, headers)
             return data
         except UnicodeDecodeError as e:
             global_logger.error(f"Decode error {e}")
