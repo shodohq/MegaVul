@@ -22,6 +22,11 @@ HCI_TR_C = FIXTURES_DIR / "hci_tr.c"
 # hongliuliao/ehttp の epoll_socket.cpp（592行）
 EPOLL_SOCKET_CPP = FIXTURES_DIR / "epoll_socket.cpp"
 
+# yhirose/cpp-httplib の test.cc（10634行）
+# 複数行にまたがるパラメータ宣言子を含み、traverse_optional_parameter_declaration で
+# TypeError: replace() argument 1 must be str, not list を引き起こす
+CPP_HTTPLIB_TEST_CC = FIXTURES_DIR / "cpp_httplib_test.cc"
+
 
 # ---- セッションスコープの parser fixture ----------------------------------------
 
@@ -171,3 +176,24 @@ class TestParserCpp:
             assert f["func"].strip(), (
                 f"func_name={f['func_name']} の func フィールドが空"
             )
+
+
+# ---- ParserCpp リグレッションテスト (cpp_httplib_test.cc) -----------------------
+
+
+class TestParserCppRegression:
+    @pytest.mark.xfail(
+        raises=TypeError,
+        reason=(
+            "複数行にまたがるパラメータ宣言子で node_split_from_file が list[str] を返し、"
+            "multiline_replace の replace_id が str でなくなる既知のバグ "
+            "(parser_cpp.py:traverse_optional_parameter_declaration)"
+        ),
+    )
+    def test_parse_cpp_httplib_does_not_crash(self, parser_cpp, tmp_path):
+        """yhirose/cpp-httplib の test.cc がクラッシュなく解析できる。
+
+        修正後は xfail マークを外して通常テストにする。
+        """
+        funcs = run_parse_file(parser_cpp, CPP_HTTPLIB_TEST_CC, tmp_path)
+        assert len(funcs) > 0
