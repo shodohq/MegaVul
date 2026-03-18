@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
+import http.client
 import urllib.request
 import urllib.error
 from urllib.parse import urlparse
@@ -94,6 +95,12 @@ def safe_read_json_from_network(
             time.sleep(sleep_time)
         except TimeoutError as e:
             global_logger.error(f"Timeout error: {e}")
+            time.sleep(sleep_time)
+        except http.client.IncompleteRead as e:
+            global_logger.error(f"IncompleteRead error: {e}")
+            time.sleep(sleep_time)
+        except ConnectionResetError as e:
+            global_logger.error(f"ConnectionReset error: {e}")
             time.sleep(sleep_time)
 
 
