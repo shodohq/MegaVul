@@ -9,12 +9,15 @@
   "remoteUser": "cntuser",
   "updateRemoteUserUID": true,
   "postCreateCommand": "uv sync",
-  "postStartCommand": "git config --global --add safe.directory '*'",
   "remoteEnv": {
     // コンテナ環境変数 CURRENT_WORKSPACE_FOLDER は .env 経由で docker-compose が設定する
     "PATH": "${containerEnv:CURRENT_WORKSPACE_FOLDER}/.venv/bin:${containerEnv:PATH}",
     "LANG": "en_US.UTF-8",
-    "LC_ALL": "en_US.UTF-8"
+    "LC_ALL": "en_US.UTF-8",
+    // コンテナ内では GPG 署名を無効化（ホストの .gitconfig は :ro マウントのため上書き不可）
+    "GIT_CONFIG_COUNT": "1",
+    "GIT_CONFIG_KEY_0": "commit.gpgsign",
+    "GIT_CONFIG_VALUE_0": "false"
   },
   "customizations": {
     "vscode": {

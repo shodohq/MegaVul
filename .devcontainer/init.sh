@@ -29,6 +29,7 @@ services:
       - .env
     volumes:
       - $WORKSPACE:$WORKSPACE:rw
+      - $HOME/.gitconfig:/home/cntuser/.gitconfig:ro
 EOF
 
 # worktree の場合: git-common-dir が絶対パス（/始まり）になる
