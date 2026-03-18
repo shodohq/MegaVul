@@ -6,6 +6,8 @@
   "initializeCommand": ["bash", ".devcontainer/init.sh"],
   // ${localWorkspaceFolder} はホスト側のパスそのまま。コンテナ内も同じ絶対パスでマウントされるので一致する
   "workspaceFolder": "${localWorkspaceFolder}",
+  "remoteUser": "cntuser",
+  "updateRemoteUserUID": true,
   "postCreateCommand": "uv sync",
   "postStartCommand": "git config --global --add safe.directory '*'",
   "remoteEnv": {
