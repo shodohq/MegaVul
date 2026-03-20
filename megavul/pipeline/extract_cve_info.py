@@ -109,6 +109,7 @@ def extract_cwe_ids(weaknesses: list[dict]) -> list[str]:
     return list(cwe_id)
 
 
+# NOTE: ここでloggerを引数にとってるのマジでなに？ global_loggerとの違いは？
 def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[str]):
     """mining commit url and fix some corrupted url"""
     url_result = []
@@ -127,7 +128,9 @@ def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[st
                 # get final URL from short URL
                 # e.g. http://git.kernel.org/linus/c19483cc5e56ac5e22dd19cf25ba210ab1537773
                 #      https://git.kernel.org/linus/07721feee46b4b248402133228235318199b05ec
+                old_url = url
                 url = get_final_redirect_url(url)
+                global_logger.debug(f"got redirect url: {old_url} -> {url}")
             url = (
                 url.replace("%3B", ";")
                 .replace("a=commitdiff_plain", "a=commitdiff")
@@ -139,7 +142,11 @@ def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[st
             ) is not None:
                 replace_str = version_re.group(0)
                 new_name = f"{replace_str.split('-')[0]}.git"
+                old_url = url
                 url = url.replace(replace_str, new_name)
+                global_logger.debug(
+                    f"got new url by removing version: {old_url} -> {url}"
+                )
             # filter missing commit hash url
             if (
                 "h=" not in url
@@ -147,6 +154,7 @@ def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[st
                 or "/tree/" in url
                 or "/patch/" in url
             ):
+                global_logger.debug(f"invalid kernel.org url: {url}, skip")
                 continue
             url_result.append(url)
         elif nloc == "sourceware.org":

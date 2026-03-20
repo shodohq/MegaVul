@@ -150,6 +150,9 @@ def get_final_redirect_url(url: str) -> str:
         except requests.exceptions.ConnectionError:
             # サーバー側から接続をリセットされた場合（Cloudflareのbot保護など）。
             # リトライしても改善しないため、リダイレクト解決を諦めて元のURLをそのまま返す。
+            global_logger.error(
+                f"Connection error for url: {url}, returning original url"
+            )
             return url
     if res.status_code == 200 or ("Location" not in res.headers.keys()):
         return url
@@ -169,7 +172,9 @@ def __safe_get_request(url: str) -> Optional[requests.Response]:
             if res.status_code == 404:
                 break
             if res.status_code != 200:
-                print(f"{url} status code {res.status_code}, retry left:{retry_cnt}")
+                global_logger.info(
+                    f"{url} status code {res.status_code}, retry left:{retry_cnt}"
+                )
                 sleep_time = (
                     30 if res.status_code == 429 else 10
                 )  # HTTP 429 Too Many Requests response status code
