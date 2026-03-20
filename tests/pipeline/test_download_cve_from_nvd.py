@@ -40,8 +40,8 @@ def test_compose_nvd_delta_url_contains_params():
         "2024-12-31T23:59:59.000+00:00",
         start_index=0,
     )
-    assert "lastModStartDate=2024-01-01T00:00:00.000+00:00" in url
-    assert "lastModEndDate=2024-12-31T23:59:59.000+00:00" in url
+    assert "lastModStartDate=2024-01-01T00%3A00%3A00.000%2B00%3A00" in url
+    assert "lastModEndDate=2024-12-31T23%3A59%3A59.000%2B00%3A00" in url
     assert "startIndex=0" in url
     assert "resultsPerPage=2000" in url
 
