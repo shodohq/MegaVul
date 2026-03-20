@@ -3,6 +3,7 @@ import math
 import shutil
 from collections import deque
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from tqdm import tqdm
 from dataclasses import dataclass, asdict
@@ -38,7 +39,7 @@ def compose_nvd_delta_url(
 ) -> str:
     return (
         f"https://services.nvd.nist.gov/rest/json/cves/2.0/"
-        f"?lastModStartDate={last_mod_start}&lastModEndDate={last_mod_end}"
+        f"?lastModStartDate={quote(last_mod_start)}&lastModEndDate={quote(last_mod_end)}"
         f"&resultsPerPage={results_per_page}&startIndex={start_index}"
     )
 
@@ -183,6 +184,8 @@ def _delta_update():
     probe_url = compose_nvd_delta_url(
         last_mod_start, crawl_end_time, 0, results_per_page=1
     )
+    request_timestamps: deque = deque()
+    request_timestamps.append(time.monotonic())
     probe_data = safe_read_json_from_network(probe_url)
     delta_total = probe_data.get("totalResults", 0)
 
@@ -196,8 +199,6 @@ def _delta_update():
     existing_entries = read_json_from_local(all_cve_from_nvd_json_path)
     assert isinstance(existing_entries, list)
     cve_map: dict[str, dict] = {entry["id"]: entry for entry in existing_entries}
-
-    request_timestamps: deque = deque()
 
     def delta_url_fn(start_index: int) -> str:
         return compose_nvd_delta_url(last_mod_start, crawl_end_time, start_index)

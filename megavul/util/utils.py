@@ -87,8 +87,10 @@ def safe_read_json_from_network(
             global_logger.error(f"Decode error {e}")
             time.sleep(sleep_time)
         except urllib.error.HTTPError as e:
-            if e.code == 403:  # 403 forbidden
-                global_logger.error(str(e))
+            global_logger.error(f"HTTP error {e.code}: {e}")
+            if e.code == 429:
+                time.sleep(30)  # NVD rate limit: wait longer
+            else:
                 time.sleep(sleep_time)
         except urllib.error.URLError as e:
             global_logger.error(str(e))
