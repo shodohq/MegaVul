@@ -133,19 +133,34 @@ def read_urls_from_file(path: Path) -> list[str]:
 
 def get_final_redirect_url(url: str) -> str:
     # get the final URL from a redirect URL
+    # TODO: retry回数という概念を導入したほうが良さそう
+    global_logger.debug(f"Resolving redirect url: {url}")
     while True:
         try:
             res = requests.head(url, proxies=proxies, timeout=10)
+            global_logger.debug(
+                "requests.head(%s) -> status=%s location=%s final_url=%s",
+                url,
+                res.status_code,
+                res.headers.get("Location"),
+                res.url,
+            )
             break
         except (
             requests.exceptions.ReadTimeout,
             requests.exceptions.ProxyError,
             requests.exceptions.SSLError,
             requests.exceptions.ChunkedEncodingError,
-        ):
+        ) as e:
+            global_logger.debug(
+                f"Error getting redirect url for {url}. error: {e}. retrying...."
+            )
             continue
         except requests.exceptions.ConnectTimeout:
             time.sleep(10)
+            global_logger.debug(
+                f"Connection timeout when getting redirect url for {url}, retrying..."
+            )
             continue
         except requests.exceptions.ConnectionError:
             # サーバー側から接続をリセットされた場合（Cloudflareのbot保護など）。
@@ -154,10 +169,21 @@ def get_final_redirect_url(url: str) -> str:
                 f"Connection error for url: {url}, returning original url"
             )
             return url
-    if res.status_code == 200 or ("Location" not in res.headers.keys()):
+
+    # TODO: ここ、status_code==403のときなど、「そもそもアクセスできなかったのでリダイレクトがあるかどうかもわからない」ケースにも、あたかもリダイレクトないっす！という態度で返してる。
+    # つまり、「リダイレクトないことが確定」と「リダイレクトあるかもしれないけどアクセスできないからわからない」を区別せずに、両方とも「リダイレクトない」として返してる。　これ微妙なのでいつか改善する。
+    if res.status_code == 200:
         return url
+
+    elif "Location" not in res.headers.keys():
+        global_logger.debug(
+            f"Got non-200 status code {res.status_code} for url: {url}, but no Location header. Returning original url."
+        )
+        return url
+
     new_url = res.headers["Location"]
     if (res.status_code // 100) == 3:  # recursively uncover redirect url
+        global_logger.debug(f"Following redirect: {url} -> {new_url}")
         return get_final_redirect_url(new_url)
     return new_url
 

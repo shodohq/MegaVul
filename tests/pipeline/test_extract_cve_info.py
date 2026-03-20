@@ -34,21 +34,21 @@ class TestKernelOrgStableCIntegration:
     実際にリダイレクトを追い、パイプラインが正しい URL を返すことを確認する。
     """
 
-    # TODO: テスト落ちるので治す
+    # TODO: テスト落ちるので治す. 原因はわかっている: https://www.notion.so/shodohq/MegaVul-30bae1b4a59280889cc4d5ba7de31df3?source=copy_link#329ae1b4a592802a8f0ed61cc04661a6
     def test_stable_c_hash_a_is_recognized(self):
         url = f"https://git.kernel.org/stable/c/{HASH_A}"
         result = _run([url])
         assert len(result) == 1
         assert HASH_A in result[0]
 
-    # TODO: テスト落ちるので治す
+    # TODO: テスト落ちるので治す. 原因はわかっている: https://www.notion.so/shodohq/MegaVul-30bae1b4a59280889cc4d5ba7de31df3?source=copy_link#329ae1b4a592802a8f0ed61cc04661a6
     def test_stable_c_hash_b_is_recognized(self):
         url = f"https://git.kernel.org/stable/c/{HASH_B}"
         result = _run([url])
         assert len(result) == 1
         assert HASH_B in result[0]
 
-    # TODO: テスト落ちるので治す
+    # TODO: テスト落ちるので治す. 原因はわかっている: https://www.notion.so/shodohq/MegaVul-30bae1b4a59280889cc4d5ba7de31df3?source=copy_link#329ae1b4a592802a8f0ed61cc04661a6
     def test_stable_c_two_urls_both_recognized(self):
         url_a = f"https://git.kernel.org/stable/c/{HASH_A}"
         url_b = f"https://git.kernel.org/stable/c/{HASH_B}"
@@ -57,7 +57,7 @@ class TestKernelOrgStableCIntegration:
         assert any(HASH_A in u for u in result)
         assert any(HASH_B in u for u in result)
 
-    # TODO: テスト落ちるので治す
+    # TODO: テスト落ちるので治す. 原因はわかっている: https://www.notion.so/shodohq/MegaVul-30bae1b4a59280889cc4d5ba7de31df3?source=copy_link#329ae1b4a592802a8f0ed61cc04661a6
     def test_result_url_contains_h_param(self):
         """`?id=` が `?h=` に変換されて返ること"""
         url = f"https://git.kernel.org/stable/c/{HASH_A}"
@@ -65,7 +65,7 @@ class TestKernelOrgStableCIntegration:
         assert len(result) == 1
         assert "h=" in result[0]
 
-    # TODO: テスト落ちるので治す
+    # TODO: テスト落ちるので治す. 原因はわかっている: https://www.notion.so/shodohq/MegaVul-30bae1b4a59280889cc4d5ba7de31df3?source=copy_link#329ae1b4a592802a8f0ed61cc04661a6
     def test_linus_short_url_is_recognized(self):
         """旧形式 /linus/<hash> もリダイレクト後に認識される"""
         hash_val = "c19483cc5e56ac5e22dd19cf25ba210ab1537773"

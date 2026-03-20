@@ -130,7 +130,8 @@ def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[st
                 #      https://git.kernel.org/linus/07721feee46b4b248402133228235318199b05ec
                 old_url = url
                 url = get_final_redirect_url(url)
-                global_logger.debug(f"got redirect url: {old_url} -> {url}")
+                if old_url != url:
+                    global_logger.debug(f"got redirect url: {old_url} -> {url}")
             url = (
                 url.replace("%3B", ";")
                 .replace("a=commitdiff_plain", "a=commitdiff")
@@ -147,6 +148,7 @@ def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[st
                 global_logger.debug(
                     f"got new url by removing version: {old_url} -> {url}"
                 )
+
             # filter missing commit hash url
             if (
                 "h=" not in url
@@ -156,7 +158,8 @@ def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[st
             ):
                 global_logger.debug(f"invalid kernel.org url: {url}, skip")
                 continue
-            url_result.append(url)
+            else:
+                url_result.append(url)
         elif nloc == "sourceware.org":
             if "h=" in url:
                 # 1. find commit URL first
@@ -372,6 +375,9 @@ def mining_commit_urls_from_reference_urls(logger: logging.Logger, urls: list[st
                 url_result.append(commit_url)
         else:
             logger.debug(f"Unknown reference url: {url}")
+
+    if len(url_result) == 0:
+        global_logger.debug(f"No commit url found from reference urls: {urls}.")
 
     return url_result
 
