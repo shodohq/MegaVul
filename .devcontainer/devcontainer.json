@@ -3,7 +3,10 @@
   "dockerComposeFile": "docker-compose.yaml",
   "service": "devcontainer",
   // initializeCommand でホスト上の init.sh を実行し、docker-compose.yaml と .env を生成してからコンテナを起動する
-  "initializeCommand": ["bash", ".devcontainer/init.sh"],
+  "initializeCommand": [
+    "bash",
+    ".devcontainer/init.sh"
+  ],
   // ${localWorkspaceFolder} はホスト側のパスそのまま。コンテナ内も同じ絶対パスでマウントされるので一致する
   "workspaceFolder": "${localWorkspaceFolder}",
   "remoteUser": "cntuser",
@@ -30,5 +33,12 @@
         "terminal.integrated.defaultProfile.linux": "bash"
       }
     }
-  }
+  },
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.claude,target=/home/cntuser/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.claude.json,target=/home/cntuser/.claude.json,type=bind,consistency=cached"
+  ]
 }
