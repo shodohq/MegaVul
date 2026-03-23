@@ -66,7 +66,7 @@ class RepoType(StrEnum):
     PureCpp = "cpp"  # All the files in this project are CPP
     Mix = "mix"  # CPP and C mix
     Java = "java"
-    # extend other languages
+    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには RepoType enum に新しいエントリを追加する
 
 
 def difflib_diff_func(before: str, after: str) -> tuple[str, dict]:

@@ -101,6 +101,8 @@ def run_joern_once(timeout) -> int:
         generate_test = "io.joern.c2cpg.io.MegaVulGraphGenerateForCAndCppTest"
     elif crawling_language == CrawlingType.Java:
         generate_test = "io.joern.javasrc2cpg.querying.MegaVulGraphGenerateForJavaTest"
+    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して Joern のテストクラス名を指定する
+    #   対応する Scala テストファイルを megavul/scala/ 以下に新規作成し、Joern に言語フロントエンドが必要
     else:
         raise RuntimeError("Unknown test")
 
@@ -181,6 +183,7 @@ def call_joern_to_generate_graph():
         joern_script_path = (
             StorageLocation.scala_script_dir() / "MegaVulGraphGenerateForJavaTest.scala"
         )
+    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して言語用の Scala スクリプトパスを指定する
     else:
         raise RuntimeError(f"Scala file not found for {crawling_language}")
 
@@ -212,6 +215,8 @@ def call_joern_to_generate_graph():
             / "joern-cli/frontends/javasrc2cpg/src/test/scala/io/joern/javasrc2cpg/querying"
             / joern_script_name,
         )
+    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して Joern フロントエンド内の
+    #   適切なテストディレクトリへ Scala スクリプトをコピーする先を指定する
     else:
         raise RuntimeError(f"Unspecified {joern_script_path} file copy destination")
 
@@ -379,6 +384,8 @@ def abstracting_functions(logger: logging.Logger, cve: CveWithCommitInfo):
         code_abstracter = CLikeCodeAbstracter(logger)
     elif crawling_language == CrawlingType.Java:
         code_abstracter = JavaCodeAbstracter(logger)
+    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の CodeAbstracter を設定する
+    #   対応する megavul/parser/<lang>_code_abstracter.py も新規作成が必要
     else:
         raise RuntimeError(f"Code abstracter for {crawling_language} not found!")
 

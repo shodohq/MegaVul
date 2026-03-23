@@ -202,6 +202,8 @@ class TestFileFilter(GlobalFilter):
             return self.filter_c_cpp_test_file(file)
         elif crawling_language == CrawlingType.Java:
             return self.filter_java_test_file(file)
+        # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテストファイルの判定ロジックを実装する
+        #   例: Go なら *_test.go パターンを検出する filter_go_test_file() を作成する
 
     def filter_java_test_file(self, file: CommitFile) -> bool:
         file_name = file.file_path.split("/")[-1].split(".")[0]
@@ -800,6 +802,8 @@ class TestFunctionFilter(LocalFilter):
         elif crawling_language == CrawlingType.Java:
             # The test methods for java are usually in the `xxxxxTest` file
             return False
+        # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテスト関数の判定ロジックを実装する
+        #   例: Go なら "Test" や "Benchmark" で始まる関数名を検出する
         else:
             return False
 
