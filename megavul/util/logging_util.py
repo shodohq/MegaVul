@@ -6,25 +6,31 @@ from multiprocessing.queues import Queue
 from logging.handlers import QueueHandler
 from megavul.util.config import config_file
 
-__all__ = ['global_logger', 'get_child_logger', 'MegaVulLogger']
+__all__ = ["global_logger", "get_child_logger", "MegaVulLogger"]
+
 
 class MegaVulLogger:
-
     def __init__(self):
-        logger = logging.getLogger('MegaVul')
-        logger.setLevel(logging.getLevelNamesMapping()[config_file['log_level']])
+        logger = logging.getLogger("MegaVul")
+        logger.setLevel(logging.getLevelNamesMapping()[config_file["log_level"]])
 
         # logging file
         logging_dir = StorageLocation.logging_dir()
-        log_file_formatter = logging.Formatter('%(asctime)s - %(filename)s:%(lineno)d - [%(levelname)s]: %(message)s',
-                                               datefmt='%m/%d/%Y %I:%M:%S %p')
-        file_handler = logging.FileHandler(logging_dir / datetime.now().strftime('log_%Y-%m-%d_%H_%M.log'), mode='w',
-                                           encoding='utf-8')
+        log_file_formatter = logging.Formatter(
+            "%(asctime)s - %(filename)s:%(lineno)d - [%(levelname)s]: %(message)s",
+            datefmt="%m/%d/%Y %I:%M:%S %p",
+        )
+        file_handler = logging.FileHandler(
+            logging_dir / datetime.now().strftime("log_%Y-%m-%d_%H_%M.log"),
+            mode="w",
+            encoding="utf-8",
+        )
         file_handler.setFormatter(log_file_formatter)
 
         # console
-        console_formatter = logging.Formatter('%(asctime)s - [%(levelname)s]: %(message)s',
-                                              datefmt='%m/%d/%Y %I:%M:%S %p')
+        console_formatter = logging.Formatter(
+            "%(asctime)s - [%(levelname)s]: %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p"
+        )
         stream_handler = logging.StreamHandler()
         stream_handler.setFormatter(console_formatter)
 
@@ -42,10 +48,10 @@ class MegaVulLogger:
     """
 
     @staticmethod
-    def get_child_logger(queue: Queue, logger_name:str) -> logging.Logger:
+    def get_child_logger(queue: Queue, logger_name: str) -> logging.Logger:
         logger = multiprocessing.get_logger()
         logger.addHandler(QueueHandler(queue))
-        logger.setLevel(logging.getLevelNamesMapping()[config_file['log_level']])
+        logger.setLevel(logging.getLevelNamesMapping()[config_file["log_level"]])
         return logger
 
 

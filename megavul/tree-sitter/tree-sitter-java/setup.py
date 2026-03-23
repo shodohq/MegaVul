@@ -37,20 +37,15 @@ setup(
                 "bindings/python/tree_sitter_java/binding.c",
                 "src/parser.c",
             ],
-            extra_compile_args=(
-                ["-std=c11"] if system() != 'Windows' else []
-            ),
+            extra_compile_args=(["-std=c11"] if system() != "Windows" else []),
             define_macros=[
                 ("Py_LIMITED_API", "0x03080000"),
-                ("PY_SSIZE_T_CLEAN", None)
+                ("PY_SSIZE_T_CLEAN", None),
             ],
             include_dirs=["src"],
             py_limited_api=True,
         )
     ],
-    cmdclass={
-        "build": Build,
-        "bdist_wheel": BdistWheel
-    },
-    zip_safe=False
+    cmdclass={"build": Build, "bdist_wheel": BdistWheel},
+    zip_safe=False,
 )

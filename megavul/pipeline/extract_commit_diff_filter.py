@@ -1,8 +1,13 @@
 import logging
 from abc import ABCMeta, abstractmethod
 from dataclasses import asdict
-from megavul.git_platform.common import CveWithCommitInfo, VulnerableFunction, NonVulnerableFunction, CommitFile, \
-    CommitInfo
+from megavul.git_platform.common import (
+    CveWithCommitInfo,
+    VulnerableFunction,
+    NonVulnerableFunction,
+    CommitFile,
+    CommitInfo,
+)
 from typing import Callable
 from megavul.util.logging_util import global_logger
 from megavul.util.config import crawling_language, CrawlingType
@@ -12,29 +17,47 @@ from dataclasses import dataclass
 # load wordsegment corpus
 wordsegment.load()
 
-def update_commit_info_with_files(old_commit: CommitInfo, new_files: list[CommitFile]) -> CommitInfo:
+
+def update_commit_info_with_files(
+    old_commit: CommitInfo, new_files: list[CommitFile]
+) -> CommitInfo:
     old_commit = asdict(old_commit)
-    old_commit.pop('files')
+    assert isinstance(old_commit, dict)
+    old_commit.pop("files")
     return CommitInfo(**old_commit, files=new_files)
 
 
-def update_cve_with_commits(old_cve: CveWithCommitInfo, new_commits: list[CommitInfo]) -> CveWithCommitInfo:
+def update_cve_with_commits(
+    old_cve: CveWithCommitInfo, new_commits: list[CommitInfo]
+) -> CveWithCommitInfo:
     old_cve = asdict(old_cve)
-    old_cve.pop('commits')
+    assert isinstance(old_cve, dict)
+    old_cve.pop("commits")
     return CveWithCommitInfo(**old_cve, commits=new_commits)
 
 
-def update_file_with_funcs(old_file: CommitFile, new_vul_funcs: list[VulnerableFunction],
-                           new_non_vul_funcs: list[NonVulnerableFunction]) -> CommitFile:
+def update_file_with_funcs(
+    old_file: CommitFile,
+    new_vul_funcs: list[VulnerableFunction],
+    new_non_vul_funcs: list[NonVulnerableFunction],
+) -> CommitFile:
     old_file = asdict(old_file)
-    old_file.pop('vulnerable_functions')
-    old_file.pop('non_vulnerable_functions')
-    return CommitFile(**old_file, vulnerable_functions=new_vul_funcs, non_vulnerable_functions=new_non_vul_funcs)
+    assert isinstance(old_file, dict)
+    old_file.pop("vulnerable_functions")
+    old_file.pop("non_vulnerable_functions")
+    return CommitFile(
+        **old_file,
+        vulnerable_functions=new_vul_funcs,
+        non_vulnerable_functions=new_non_vul_funcs,
+    )
 
 
-def iterate_all_cve(logger: logging.Logger, cve_list: list[CveWithCommitInfo],
-                    vul_filter: Callable[[VulnerableFunction], bool],
-                    non_vul_filter: Callable[[NonVulnerableFunction], bool]):
+def iterate_all_cve(
+    logger: logging.Logger,
+    cve_list: list[CveWithCommitInfo],
+    vul_filter: Callable[[VulnerableFunction], bool],
+    non_vul_filter: Callable[[NonVulnerableFunction], bool],
+):
     result_cve = []
     for cve in cve_list:
         commit_infos = []
@@ -50,13 +73,16 @@ def iterate_all_cve(logger: logging.Logger, cve_list: list[CveWithCommitInfo],
                         new_non_vul_funcs.append(func)
                 if len(new_vul_funcs) != 0:
                     new_files.append(
-                        CommitFile(file.file_name, file.file_path, file.language, new_vul_funcs,
-                                   new_non_vul_funcs)
+                        CommitFile(
+                            file.file_name,
+                            file.file_path,
+                            file.language,
+                            new_vul_funcs,
+                            new_non_vul_funcs,
+                        )
                     )
             if len(new_files) != 0:
-                commit_infos.append(
-                    update_commit_info_with_files(commit, new_files)
-                )
+                commit_infos.append(update_commit_info_with_files(commit, new_files))
         if len(commit_infos) != 0:
             result_cve.append(update_cve_with_commits(cve, commit_infos))
     return result_cve
@@ -70,7 +96,7 @@ class FilterBase(metaclass=ABCMeta):
 
     def _info(self, msg: str):
         if FilterBase.DEBUG:
-            self.__logger.info(f'[{self.filter_name}] {msg}')
+            self.__logger.info(f"[{self.filter_name}] {msg}")
 
     @property
     def filter_name(self) -> str:
@@ -79,24 +105,22 @@ class FilterBase(metaclass=ABCMeta):
 
 class GlobalFilter(FilterBase, metaclass=ABCMeta):
     """
-        Global filter will first iterate all cve to record some information, and then use the information to filter functions.
-        If you don't need to traverse all cve to record some information in advance, recommended to use *LocalFilter*
+    Global filter will first iterate all cve to record some information, and then use the information to filter functions.
+    If you don't need to traverse all cve to record some information in advance, recommended to use *LocalFilter*
     """
 
     @abstractmethod
-    def filter(self, cve_list: list[CveWithCommitInfo]) -> list[CveWithCommitInfo]:
-        ...
+    def filter(self, cve_list: list[CveWithCommitInfo]) -> list[CveWithCommitInfo]: ...
 
 
 class LocalFilter(FilterBase, metaclass=ABCMeta):
     @abstractmethod
     def filter_vul(self, vul_func: VulnerableFunction) -> bool:
-        """ return True if the function should be filtered """
+        """return True if the function should be filtered"""
         ...
 
     @abstractmethod
-    def filter_non_vul(self, non_vul_func: NonVulnerableFunction) -> bool:
-        ...
+    def filter_non_vul(self, non_vul_func: NonVulnerableFunction) -> bool: ...
 
 
 class FilterProcessRecorder:
@@ -140,20 +164,26 @@ class FilterProcessRecorder:
 
         if prev_info is None:
             logger.info(
-                f'[Filter Recorder] Before Run All Filters: '
-                f'CVE:{info.cve_cnt} Commits:{info.commit_cnt} Files:{info.file_cnt} '
-                f'Vul-Functions:{info.vul_func_cnt} Non-Vul-Functions:{info.no_vul_func_cnt}')
+                f"[Filter Recorder] Before Run All Filters: "
+                f"CVE:{info.cve_cnt} Commits:{info.commit_cnt} Files:{info.file_cnt} "
+                f"Vul-Functions:{info.vul_func_cnt} Non-Vul-Functions:{info.no_vul_func_cnt}"
+            )
         else:
             logger.info(
-                f'[Filter Recorder] After {filter_name}: '
-                f'CVE:{info.cve_cnt}{cal_diff(prev_info.cve_cnt, info.cve_cnt)} '
-                f'Commits:{info.commit_cnt}{cal_diff(prev_info.commit_cnt, info.commit_cnt)} '
-                f'Files:{info.file_cnt}{cal_diff(prev_info.file_cnt, info.file_cnt)} '
-                f'Vul-Functions:{info.vul_func_cnt}{cal_diff(prev_info.vul_func_cnt, info.vul_func_cnt)} '
-                f'Non-Vul-Functions:{info.no_vul_func_cnt}{cal_diff(prev_info.no_vul_func_cnt, info.no_vul_func_cnt)}')
+                f"[Filter Recorder] After {filter_name}: "
+                f"CVE:{info.cve_cnt}{cal_diff(prev_info.cve_cnt, info.cve_cnt)} "
+                f"Commits:{info.commit_cnt}{cal_diff(prev_info.commit_cnt, info.commit_cnt)} "
+                f"Files:{info.file_cnt}{cal_diff(prev_info.file_cnt, info.file_cnt)} "
+                f"Vul-Functions:{info.vul_func_cnt}{cal_diff(prev_info.vul_func_cnt, info.vul_func_cnt)} "
+                f"Non-Vul-Functions:{info.no_vul_func_cnt}{cal_diff(prev_info.no_vul_func_cnt, info.no_vul_func_cnt)}"
+            )
 
-    def record_and_print(self, logger: logging.Logger, cve_with_parsed_commit: list[CveWithCommitInfo],
-                         filter_name: str | None = None):
+    def record_and_print(
+        self,
+        logger: logging.Logger,
+        cve_with_parsed_commit: list[CveWithCommitInfo],
+        filter_name: str | None = None,
+    ):
         self.record_info(cve_with_parsed_commit)
         self.print_diff_info(logger, filter_name)
 
@@ -164,7 +194,7 @@ class FilterProcessRecorder:
 
 class TestFileFilter(GlobalFilter):
     """
-        filter test file e.g. tests/unittests/tests-clif/tests-clif.c
+    filter test file e.g. tests/unittests/tests-clif/tests-clif.c
     """
 
     def should_filter_this_file(self, file: CommitFile) -> bool:
@@ -172,39 +202,47 @@ class TestFileFilter(GlobalFilter):
             return self.filter_c_cpp_test_file(file)
         elif crawling_language == CrawlingType.Java:
             return self.filter_java_test_file(file)
+        # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテストファイルの判定ロジックを実装する
+        #   例: Go なら *_test.go パターンを検出する filter_go_test_file() を作成する
 
     def filter_java_test_file(self, file: CommitFile) -> bool:
-        file_name = file.file_path.split('/')[-1].split('.')[0]
-        if file_name.endswith('Test'):
+        file_name = file.file_path.split("/")[-1].split(".")[0]
+        if file_name.endswith("Test"):
             return True
         return False
-
 
     def filter_c_cpp_test_file(self, file: CommitFile) -> bool:
         file_path = file.file_path
 
-        for path in reversed(file_path.split('/')):
-            lower_path = path.split('.')[0]  # remove extension
+        for path in reversed(file_path.split("/")):
+            lower_path = path.split(".")[0]  # remove extension
             lower_path = lower_path.lower()
-            if lower_path == 'test' or lower_path == 'tests' or lower_path == 'testing' or lower_path == 'testsuite':
+            if (
+                lower_path == "test"
+                or lower_path == "tests"
+                or lower_path == "testing"
+                or lower_path == "testsuite"
+            ):
                 return True
 
-            split_lower_path = lower_path.split('_')
+            split_lower_path = lower_path.split("_")
             if len(split_lower_path) > 1:
                 for seg in split_lower_path:
-                    if 'test' in seg:
+                    if "test" in seg:
                         return True
 
-            split_lower_path = lower_path.split('-')
+            split_lower_path = lower_path.split("-")
             if len(split_lower_path) > 1:
                 for seg in split_lower_path:
-                    if 'test' in seg:
+                    if "test" in seg:
                         return True
 
-            split_lower_path = wordsegment.segment(lower_path)  # using wordsegment library
+            split_lower_path = wordsegment.segment(
+                lower_path
+            )  # using wordsegment library
             if len(split_lower_path) > 1:
                 for seg in split_lower_path:
-                    if seg in ['test', 'tests', 'runtest']:
+                    if seg in ["test", "tests", "runtest"]:
                         return True
 
         return False
@@ -222,10 +260,14 @@ class TestFileFilter(GlobalFilter):
                     if not self.should_filter_this_file(file):
                         new_files.append(file)
                     else:
-                        self._info(f'Find test file {file.file_path} in {commit.git_url}')
+                        self._info(
+                            f"Find test file {file.file_path} in {commit.git_url}"
+                        )
 
                 if len(new_files) != 0:
-                    commit_infos.append(update_commit_info_with_files(commit, new_files))
+                    commit_infos.append(
+                        update_commit_info_with_files(commit, new_files)
+                    )
 
             if len(commit_infos) != 0:
                 result_cve.append(update_cve_with_commits(cve, commit_infos))
@@ -234,12 +276,12 @@ class TestFileFilter(GlobalFilter):
 
 class MultiCveCommitFilter(GlobalFilter):
     """
-        filter some commit across multiple cves.
-        https://github.com/rdesktop/rdesktop/commit/4dca546d04321a610c1835010b5dad85163b65e1
-        this commit has multiple cve.
-        CVE-2018-8791, CVE-2018-8792, CVE-2018-8793, CVE-2018-8794, CVE-2018-8795, CVE-2018-8796, CVE-2018-8797 ... ...
-        we only keep one CVE(first appear) and gather all CWE ids in it.
-        todo what about other cvss metrics?
+    filter some commit across multiple cves.
+    https://github.com/rdesktop/rdesktop/commit/4dca546d04321a610c1835010b5dad85163b65e1
+    this commit has multiple cve.
+    CVE-2018-8791, CVE-2018-8792, CVE-2018-8793, CVE-2018-8794, CVE-2018-8795, CVE-2018-8796, CVE-2018-8797 ... ...
+    we only keep one CVE(first appear) and gather all CWE ids in it.
+    todo what about other cvss metrics?
     """
 
     def commit_key(self, commit: CommitInfo):
@@ -259,9 +301,13 @@ class MultiCveCommitFilter(GlobalFilter):
                 cwe_set.update(cve.cwe_ids)
 
                 if occurrence_count == 0:
-                    commit_infos.append(commit)  # add this commit, drop other commit if they appear in other cve
+                    commit_infos.append(
+                        commit
+                    )  # add this commit, drop other commit if they appear in other cve
                 else:
-                    self._info(f'find commit in multiple cve, {commit.git_url} found in {cve.cve_id}')
+                    self._info(
+                        f"find commit in multiple cve, {commit.git_url} found in {cve.cve_id}"
+                    )
 
                 commit_occur_table[commit_key] = (occurrence_count + 1, cwe_set)
 
@@ -284,10 +330,12 @@ class MultiCveCommitFilter(GlobalFilter):
 
             if need_update_cwe:
                 cve_dict = asdict(cve)
-                cve_dict.pop('cwe_ids')
-                cve_dict.pop('commits')
+                cve_dict.pop("cwe_ids")
+                cve_dict.pop("commits")
                 result_cve.append(
-                    CveWithCommitInfo(**cve_dict, cwe_ids=list(set(new_cwe_list)), commits=cve.commits)
+                    CveWithCommitInfo(
+                        **cve_dict, cwe_ids=list(set(new_cwe_list)), commits=cve.commits
+                    )
                 )
             else:
                 result_cve.append(cve)
@@ -297,21 +345,20 @@ class MultiCveCommitFilter(GlobalFilter):
 
 class OneCveMultipleCommitsNonVulDuplicateFilter(GlobalFilter):
     """
-        some cve have multiple commits to fix the vulnerability, with each commit making minor changes to the function.
-        non-vul funcs keep unchanged, but we extract them in each commit,
-        and there are many redundant duplicate non-vul that we need to filter out.
+            some cve have multiple commits to fix the vulnerability, with each commit making minor changes to the function.
+            non-vul funcs keep unchanged, but we extract them in each commit,
+            and there are many redundant duplicate non-vul that we need to filter out.
 
-        e.g.CVE-2018-19535
-Exiv2/exiv2:8b480bc5b2cc2abb8cf6fe4e16c24e58916464d2  files=[file_name=pngchunk_int.cpp, vul_funcs=[PngChunk::readRawProfile], non_vul_funcs=[PngChunk::parseTXTChunk... ...
-Exiv2/exiv2:cf3ba049a2792ec2a4a877e343f5dd9654da53dc  files=[file_name=pngchunk_int.cpp, vul_funcs=[PngChunk::readRawProfile], non_vul_funcs=[PngChunk::parseTXTChunk... ...
-Exiv2/exiv2:03173751b4d7053d6ddf52a15904e8f751f78f56  files=[file_name=pngchunk_int.cpp, vul_funcs=[PngChunk::readRawProfile], non_vul_funcs=[PngChunk::parseTXTChunk... ...
+            e.g.CVE-2018-19535
+    Exiv2/exiv2:8b480bc5b2cc2abb8cf6fe4e16c24e58916464d2  files=[file_name=pngchunk_int.cpp, vul_funcs=[PngChunk::readRawProfile], non_vul_funcs=[PngChunk::parseTXTChunk... ...
+    Exiv2/exiv2:cf3ba049a2792ec2a4a877e343f5dd9654da53dc  files=[file_name=pngchunk_int.cpp, vul_funcs=[PngChunk::readRawProfile], non_vul_funcs=[PngChunk::parseTXTChunk... ...
+    Exiv2/exiv2:03173751b4d7053d6ddf52a15904e8f751f78f56  files=[file_name=pngchunk_int.cpp, vul_funcs=[PngChunk::readRawProfile], non_vul_funcs=[PngChunk::parseTXTChunk... ...
     """
 
     def filter(self, cve_list: list[CveWithCommitInfo]) -> list[CveWithCommitInfo]:
         result_cve = []
 
         for cve in cve_list:
-
             # fast path
             if len(cve.commits) <= 1:
                 result_cve.append(cve)
@@ -321,7 +368,6 @@ Exiv2/exiv2:03173751b4d7053d6ddf52a15904e8f751f78f56  files=[file_name=pngchunk_
             file_in_commits: dict[str, list] = {}
 
             for commit in cve.commits:
-
                 for file in commit.files:
                     file_in_commits.setdefault(file.file_path, [])
                     file_in_commits[file.file_path].append(commit.commit_hash)
@@ -343,12 +389,16 @@ Exiv2/exiv2:03173751b4d7053d6ddf52a15904e8f751f78f56  files=[file_name=pngchunk_
                     for file in commit.files:
                         if file_path != file.file_path:
                             continue
-                        non_vul_func_keys = [f"{f.func_name}$$${f.parameter_list_signature}" for f in
-                                             file.non_vulnerable_functions]
+                        non_vul_func_keys = [
+                            f"{f.func_name}$$${f.parameter_list_signature}"
+                            for f in file.non_vulnerable_functions
+                        ]
                         if len(non_vul_funcs_intersect_key) == 0:
                             non_vul_funcs_intersect_key.update(non_vul_func_keys)
                         else:
-                            non_vul_funcs_intersect_key = non_vul_funcs_intersect_key & set(non_vul_func_keys)
+                            non_vul_funcs_intersect_key = (
+                                non_vul_funcs_intersect_key & set(non_vul_func_keys)
+                            )
                 # self._info(f'non_vul_funcs_intersect_key: {non_vul_funcs_intersect_key}')
                 # todo check the func content is same, otherwise remove the function from set
 
@@ -370,15 +420,24 @@ Exiv2/exiv2:03173751b4d7053d6ddf52a15904e8f751f78f56  files=[file_name=pngchunk_
                             new_files.append(file)
                             continue
 
-                        new_non_vul_funcs = list(filter(lambda
-                                                            x: f'{x.func_name}$$${x.parameter_list_signature}' not in non_vul_funcs_intersect_key,
-                                                        file.non_vulnerable_functions))
+                        new_non_vul_funcs = list(
+                            filter(
+                                lambda x: (
+                                    f"{x.func_name}$$${x.parameter_list_signature}"
+                                    not in non_vul_funcs_intersect_key
+                                ),
+                                file.non_vulnerable_functions,
+                            )
+                        )
                         file_dict = asdict(file)
-                        file_dict.pop('non_vulnerable_functions')
-                        file_dict.pop('vulnerable_functions')
+                        file_dict.pop("non_vulnerable_functions")
+                        file_dict.pop("vulnerable_functions")
                         new_files.append(
-                            CommitFile(**file_dict, non_vulnerable_functions=new_non_vul_funcs,
-                                       vulnerable_functions=file.vulnerable_functions)
+                            CommitFile(
+                                **file_dict,
+                                non_vulnerable_functions=new_non_vul_funcs,
+                                vulnerable_functions=file.vulnerable_functions,
+                            )
                         )
 
                     new_commits.append(update_commit_info_with_files(commit, new_files))
@@ -391,12 +450,12 @@ Exiv2/exiv2:03173751b4d7053d6ddf52a15904e8f751f78f56  files=[file_name=pngchunk_
 
 class OneCveMultipleCommitsByContentDuplicateFilter(GlobalFilter):
     """
-        some cve's have different commits to fix the vulnerability, these commits have different hash but the content is the same.
-        (i.e. for different branch or version or code-base fix)
+            some cve's have different commits to fix the vulnerability, these commits have different hash but the content is the same.
+            (i.e. for different branch or version or code-base fix)
 
-        e.g. CVE-2015-1242, CVE-2015-2331, CVE-2015-2301, CVE-2022-45332...
-https://chromium.googlesource.com/v8/v8/+/0902b5f4dfdea599bf3d96fb9fb258904aff84ec
-https://chromium.googlesource.com/v8/v8/+/35b44e5fa8542a64117257465b5810e7afca0e27
+            e.g. CVE-2015-1242, CVE-2015-2331, CVE-2015-2301, CVE-2022-45332...
+    https://chromium.googlesource.com/v8/v8/+/0902b5f4dfdea599bf3d96fb9fb258904aff84ec
+    https://chromium.googlesource.com/v8/v8/+/35b44e5fa8542a64117257465b5810e7afca0e27
     """
 
     def filter(self, cve_list: list[CveWithCommitInfo]) -> list[CveWithCommitInfo]:
@@ -417,12 +476,17 @@ https://chromium.googlesource.com/v8/v8/+/35b44e5fa8542a64117257465b5810e7afca0e
                 prev_commit = cve.commits[idx - 1]
 
                 # if commit msg is same, we also consider it equal
-                if commit.commit_msg == prev_commit.commit_msg and len(commit.commit_msg) != 0:
+                if (
+                    commit.commit_msg == prev_commit.commit_msg
+                    and len(commit.commit_msg) != 0
+                ):
                     continue
 
                 this_file_set = set([f.file_path for f in commit.files])
                 prev_file_set = set([f.file_path for f in prev_commit.files])
-                if this_file_set != prev_file_set:  # file path changed, they must have different content
+                if (
+                    this_file_set != prev_file_set
+                ):  # file path changed, they must have different content
                     all_commit_file_equal = False
                     break
 
@@ -438,20 +502,29 @@ https://chromium.googlesource.com/v8/v8/+/35b44e5fa8542a64117257465b5810e7afca0e
                     diff_is_equal = True
 
                     func: VulnerableFunction
-                    for func, pre_func in zip(f.vulnerable_functions, pre_f.vulnerable_functions):
-                        if func.func_before != pre_func.func_before or func.func_after != pre_func.func_after:
+                    for func, pre_func in zip(
+                        f.vulnerable_functions, pre_f.vulnerable_functions
+                    ):
+                        if (
+                            func.func_before != pre_func.func_before
+                            or func.func_after != pre_func.func_after
+                        ):
                             content_is_equal = False
 
                         # compare diff line, diff level compare
-                        if len(func.diff_line_info['deleted_lines']) != len(pre_func.diff_line_info['deleted_lines']) \
-                                or len(func.diff_line_info['added_lines']) != len(
-                            pre_func.diff_line_info['added_lines']):
+                        if len(func.diff_line_info["deleted_lines"]) != len(
+                            pre_func.diff_line_info["deleted_lines"]
+                        ) or len(func.diff_line_info["added_lines"]) != len(
+                            pre_func.diff_line_info["added_lines"]
+                        ):
                             diff_is_equal = False
                         else:
-                            line_names = ['deleted_lines', 'added_lines']
+                            line_names = ["deleted_lines", "added_lines"]
                             for line_name in line_names:
-                                for line_a, line_b in zip(func.diff_line_info[line_name],
-                                                          pre_func.diff_line_info[line_name]):
+                                for line_a, line_b in zip(
+                                    func.diff_line_info[line_name],
+                                    pre_func.diff_line_info[line_name],
+                                ):
                                     if line_a != line_b:
                                         diff_is_equal = False
 
@@ -466,13 +539,11 @@ https://chromium.googlesource.com/v8/v8/+/35b44e5fa8542a64117257465b5810e7afca0e
 
             if all_commit_file_equal:
                 # only keep one commit in cve
-                self._info(f'find duplicate commit in {cve.cve_id}')
+                self._info(f"find duplicate commit in {cve.cve_id}")
                 for commit in cve.commits:
-                    self._info(f'{commit}')
+                    self._info(f"{commit}")
 
-                result_cve.append(
-                    update_cve_with_commits(cve, [cve.commits[0]])
-                )
+                result_cve.append(update_cve_with_commits(cve, [cve.commits[0]]))
             else:
                 result_cve.append(cve)
 
@@ -481,9 +552,10 @@ https://chromium.googlesource.com/v8/v8/+/35b44e5fa8542a64117257465b5810e7afca0e
 
 class LargeChangeFilter(GlobalFilter):
     """
-        some cve have very large number of commits, e.g. CVE-2022-35164
-        commit contains large changes, usually contain refactoring, multi-CVE fixes e.g. CVE-2018-17427
+    some cve have very large number of commits, e.g. CVE-2022-35164
+    commit contains large changes, usually contain refactoring, multi-CVE fixes e.g. CVE-2018-17427
     """
+
     Commit_Count_Threshold = 3
     Commit_Line_Change_Threshold = 110
 
@@ -491,7 +563,9 @@ class LargeChangeFilter(GlobalFilter):
         line_change_cnt = 0
         for file in commit.files:
             for func in file.vulnerable_functions:
-                line_change_cnt += len(func.diff_line_info['deleted_lines']) + len(func.diff_line_info['added_lines'])
+                line_change_cnt += len(func.diff_line_info["deleted_lines"]) + len(
+                    func.diff_line_info["added_lines"]
+                )
         return line_change_cnt > LargeChangeFilter.Commit_Line_Change_Threshold
 
     def filter(self, cve_list: list[CveWithCommitInfo]) -> list[CveWithCommitInfo]:
@@ -509,33 +583,41 @@ class LargeChangeFilter(GlobalFilter):
 
                 # step1. remove large change commit
                 if self.is_large_change_commit(commit):
-                    self._info(f'{cve.cve_id} {commit.git_url} find large change commit')
+                    self._info(
+                        f"{cve.cve_id} {commit.git_url} find large change commit"
+                    )
                     large_change_repo_name.add(repo_name)
                 else:
                     commit_infos.append(commit)
 
             # step2. remove cve's large number of commits by their repo name and related commits
-            repo_name_cnt = {k: v for k, v in repo_name_cnt.items() if v > LargeChangeFilter.Commit_Count_Threshold}
+            repo_name_cnt = {
+                k: v
+                for k, v in repo_name_cnt.items()
+                if v > LargeChangeFilter.Commit_Count_Threshold
+            }
             new_commit_infos = commit_infos
             commit_infos = []
             for commit in new_commit_infos:
                 if commit.repo_name in repo_name_cnt.keys():
-                    self._info(f'{cve.cve_id} {commit.git_url} find a bunch of commits for {cve.cve_id}')
+                    self._info(
+                        f"{cve.cve_id} {commit.git_url} find a bunch of commits for {cve.cve_id}"
+                    )
                 elif commit.repo_name in large_change_repo_name:
                     # discard other related commits, if we find a large change commit in this cve for this repo
-                    self._info(f'{cve.cve_id} {commit.git_url} find other related commit for {commit.repo_name}')
+                    self._info(
+                        f"{cve.cve_id} {commit.git_url} find other related commit for {commit.repo_name}"
+                    )
                 else:
                     commit_infos.append(commit)
 
-            result_cve.append(
-                update_cve_with_commits(cve, commit_infos)
-            )
+            result_cve.append(update_cve_with_commits(cve, commit_infos))
         return result_cve
 
 
 class KeepLatestNonVul(GlobalFilter):
     """
-        this filter try to keep the latest non-vul functions
+    this filter try to keep the latest non-vul functions
     """
 
     def filter(self, cve_list: list[CveWithCommitInfo]) -> list[CveWithCommitInfo]:
@@ -543,7 +625,6 @@ class KeepLatestNonVul(GlobalFilter):
         file_latest_mapping: dict[str, dict[str, tuple]] = {}
 
         for cve in cve_list:
-
             for commit in cve.commits:
                 repo_name = commit.repo_name
                 commit_time = commit.commit_date
@@ -553,9 +634,14 @@ class KeepLatestNonVul(GlobalFilter):
                 for file in commit.files:
                     file_path = file.file_path
 
-                    if (file_path not in file_latest_mapping[repo_name] or
-                            file_latest_mapping[repo_name][file_path][0] < commit_time):
-                        file_latest_mapping[repo_name][file_path] = (commit_time, commit_hash)
+                    if (
+                        file_path not in file_latest_mapping[repo_name]
+                        or file_latest_mapping[repo_name][file_path][0] < commit_time
+                    ):
+                        file_latest_mapping[repo_name][file_path] = (
+                            commit_time,
+                            commit_hash,
+                        )
         result_cve = []
         for cve in cve_list:
             commit_infos = []
@@ -570,31 +656,32 @@ class KeepLatestNonVul(GlobalFilter):
                     file_path = file.file_path
                     if this_repo_latest_file_commit[file_path][0] != commit_time:
                         # remove this file all non-vul funcs
-                        new_files.append(CommitFile(
-                            file.file_name, file.file_path, file.language,
-                            vulnerable_functions=file.vulnerable_functions, non_vulnerable_functions=[]
-                        ))
+                        new_files.append(
+                            CommitFile(
+                                file.file_name,
+                                file.file_path,
+                                file.language,
+                                vulnerable_functions=file.vulnerable_functions,
+                                non_vulnerable_functions=[],
+                            )
+                        )
                     else:
                         new_files.append(file)
-                commit_infos.append(
-                    update_commit_info_with_files(commit, new_files)
-                )
-            result_cve.append(
-                update_cve_with_commits(cve, commit_infos)
-            )
+                commit_infos.append(update_commit_info_with_files(commit, new_files))
+            result_cve.append(update_cve_with_commits(cve, commit_infos))
         return result_cve
 
 
 class RemoveNonVulAppearInVulFilter(GlobalFilter):
     """
-        this filter trying to remove non-vul func that were detected as vul func
+    this filter trying to remove non-vul func that were detected as vul func
     """
 
     def get_func_key(self, vul: VulnerableFunction | NonVulnerableFunction):
         if isinstance(vul, VulnerableFunction):
-            return f'{vul.func_name}$$${vul.parameter_list_signature_before}'
+            return f"{vul.func_name}$$${vul.parameter_list_signature_before}"
         elif isinstance(vul, NonVulnerableFunction):
-            return f'{vul.func_name}$$${vul.parameter_list_signature}'
+            return f"{vul.func_name}$$${vul.parameter_list_signature}"
 
     def filter(self, cve_list: list[CveWithCommitInfo]) -> list[CveWithCommitInfo]:
         vul_func_record: dict[str, dict[str, set[str]]] = {}  # repo -> file -> funcs
@@ -606,7 +693,9 @@ class RemoveNonVulAppearInVulFilter(GlobalFilter):
                     file_path = file.file_path
                     vul_func_record[repo_name].setdefault(file_path, set())
                     for vul_func in file.vulnerable_functions:
-                        vul_func_record[repo_name][file_path].add(self.get_func_key(vul_func))
+                        vul_func_record[repo_name][file_path].add(
+                            self.get_func_key(vul_func)
+                        )
 
         # let's remove non-vul
         result_cve = []
@@ -626,27 +715,28 @@ class RemoveNonVulAppearInVulFilter(GlobalFilter):
                         else:
                             new_non_vul_funcs.append(non_vul_func)
 
-                    new_files.append(CommitFile(
-                        file.file_name, file.file_path, file.language,
-                        vulnerable_functions=file.vulnerable_functions, non_vulnerable_functions=new_non_vul_funcs
-                    ))
+                    new_files.append(
+                        CommitFile(
+                            file.file_name,
+                            file.file_path,
+                            file.language,
+                            vulnerable_functions=file.vulnerable_functions,
+                            non_vulnerable_functions=new_non_vul_funcs,
+                        )
+                    )
 
-                commit_infos.append(
-                    update_commit_info_with_files(commit, new_files)
-                )
-            result_cve.append(
-                update_cve_with_commits(cve, commit_infos)
-            )
+                commit_infos.append(update_commit_info_with_files(commit, new_files))
+            result_cve.append(update_cve_with_commits(cve, commit_infos))
         return result_cve
 
 
 class RemoveNonVulDuplicateFilter(GlobalFilter):
     """
-        this filter trying remove non-vul func with the same content, keep only one non-vul func copy
+    this filter trying remove non-vul func with the same content, keep only one non-vul func copy
     """
 
     def get_func_key(self, vul: NonVulnerableFunction):
-        return f'{vul.func_name}$$${vul.parameter_list_signature}'
+        return f"{vul.func_name}$$${vul.parameter_list_signature}"
 
     def filter(self, cve_list: list[CveWithCommitInfo]) -> list[CveWithCommitInfo]:
         non_vul_record: dict[str, dict[str, dict[str, set[str]]]] = {}
@@ -654,7 +744,6 @@ class RemoveNonVulDuplicateFilter(GlobalFilter):
         for cve in cve_list:
             commit_infos = []
             for commit in cve.commits:
-
                 repo_name = commit.repo_name
                 non_vul_record.setdefault(repo_name, {})
                 new_files = []
@@ -676,26 +765,24 @@ class RemoveNonVulDuplicateFilter(GlobalFilter):
                             new_non_vul_funcs.append(non_vul_func)
 
                     new_files.append(
-                        update_file_with_funcs(file, file.vulnerable_functions, new_non_vul_funcs)
+                        update_file_with_funcs(
+                            file, file.vulnerable_functions, new_non_vul_funcs
+                        )
                     )
 
-                commit_infos.append(
-                    update_commit_info_with_files(commit, new_files)
-                )
-            result_cve.append(
-                update_cve_with_commits(cve, commit_infos)
-            )
+                commit_infos.append(update_commit_info_with_files(commit, new_files))
+            result_cve.append(update_cve_with_commits(cve, commit_infos))
         return result_cve
 
 
 class DebugGlobalFilter(GlobalFilter):
-    """ only for debug """
+    """only for debug"""
 
     def filter(self, cve_list: list[CveWithCommitInfo]) -> list[CveWithCommitInfo]:
         for cve in cve_list:
-            global_logger.debug(f'{cve.cve_id} {cve.cwe_ids}')
+            global_logger.debug(f"{cve.cve_id} {cve.cwe_ids}")
             for commit in cve.commits:
-                global_logger.debug(f'{commit.git_url} {commit}')
+                global_logger.debug(f"{commit.git_url} {commit}")
 
         return cve_list
 
@@ -703,9 +790,10 @@ class DebugGlobalFilter(GlobalFilter):
 ############################################################################################################
 #####################################  LOCAL FILTER ########################################################
 
+
 class TestFunctionFilter(LocalFilter):
     """
-        filter some test function
+    filter some test function
     """
 
     def my_filter(self, func_name: str) -> bool:
@@ -714,18 +802,28 @@ class TestFunctionFilter(LocalFilter):
         elif crawling_language == CrawlingType.Java:
             # The test methods for java are usually in the `xxxxxTest` file
             return False
+        # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテスト関数の判定ロジックを実装する
+        #   例: Go なら "Test" や "Benchmark" で始まる関数名を検出する
         else:
             return False
 
     def c_cpp_filter(self, func_name: str) -> bool:
-        func_name = func_name.split('::')[-1]  # c++ func name
-        test_func_prefix = ["START_TEST", "TEST", "DEF_TEST", "IN_PROC_BROWSER_TEST", "BOOST_AUTO_TEST_CASE",
-                            "DROGON_TEST", "test", "assert", ]
+        func_name = func_name.split("::")[-1]  # c++ func name
+        test_func_prefix = [
+            "START_TEST",
+            "TEST",
+            "DEF_TEST",
+            "IN_PROC_BROWSER_TEST",
+            "BOOST_AUTO_TEST_CASE",
+            "DROGON_TEST",
+            "test",
+            "assert",
+        ]
         for prefix in test_func_prefix:
             if func_name.startswith(prefix):
                 return True
 
-        if func_name.endswith('test'):
+        if func_name.endswith("test"):
             return True
 
         return False
@@ -739,7 +837,7 @@ class TestFunctionFilter(LocalFilter):
 
 class LargeNonVulFunctionFilter(LocalFilter):
     """
-        filter large non-vul functions
+    filter large non-vul functions
     """
 
     Non_Vul_Function_Line_Threshold = 120
@@ -748,18 +846,24 @@ class LargeNonVulFunctionFilter(LocalFilter):
         return False
 
     def filter_non_vul(self, non_vul_func: NonVulnerableFunction) -> bool:
-        return len(non_vul_func.func.split('\n')) > LargeNonVulFunctionFilter.Non_Vul_Function_Line_Threshold
+        return (
+            len(non_vul_func.func.split("\n"))
+            > LargeNonVulFunctionFilter.Non_Vul_Function_Line_Threshold
+        )
 
 
 class LargeVulFunctionFilter(LocalFilter):
     """
-        filter large vul functions, we keep as many vul functions as possible.
+    filter large vul functions, we keep as many vul functions as possible.
     """
 
     Vul_Function_Line_Threshold = 800
 
     def filter_vul(self, vul_func: VulnerableFunction) -> bool:
-        return len(vul_func.func_after.split('\n')) > LargeVulFunctionFilter.Vul_Function_Line_Threshold
+        return (
+            len(vul_func.func_after.split("\n"))
+            > LargeVulFunctionFilter.Vul_Function_Line_Threshold
+        )
 
     def filter_non_vul(self, non_vul_func: NonVulnerableFunction) -> bool:
         return False
@@ -767,19 +871,22 @@ class LargeVulFunctionFilter(LocalFilter):
 
 ############################################################################################################
 
-def run_filters(cve_list: list[CveWithCommitInfo], total_filters: list[FilterBase], debug_info = True) -> list[
-    CveWithCommitInfo]:
+
+def run_filters(
+    cve_list: list[CveWithCommitInfo], total_filters: list[FilterBase], debug_info=True
+) -> list[CveWithCommitInfo]:
     recorder = FilterProcessRecorder()
     if debug_info:
         recorder.record_and_print(global_logger, cve_list)
 
     # run all filters
     for cur_filter in total_filters:
-
         if isinstance(cur_filter, GlobalFilter):
             cve_list = cur_filter.filter(cve_list)
         elif isinstance(cur_filter, LocalFilter):
-            cve_list = iterate_all_cve(None, cve_list, cur_filter.filter_vul, cur_filter.filter_non_vul)
+            cve_list = iterate_all_cve(
+                None, cve_list, cur_filter.filter_vul, cur_filter.filter_non_vul
+            )
             #
             # cve_list = multiprocessing_apply_data_with_logger(
             #     partial(iterate_all_cve,vul_filter= cur_filter.filter_vul, non_vul_filter=cur_filter.filter_non_vul) , cve_list, chunk_mode=True

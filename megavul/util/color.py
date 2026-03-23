@@ -15,21 +15,24 @@ def interpolate_rgba(rgba1, rgba2, t):
     return r, g, b, a
 
 
-def interpolate_in_colors(data: list,
-                          colors: list[str] = [
-                              "00732A",
-"#008631",
-"#00ab41",
-"#00c04b",
-"#1fd655",
-"#39e75f",
-"#5ced73",
-"#83f28f",
-"#abf7b1",
-"#cefad0",]):
+def interpolate_in_colors(
+    data: list,
+    colors: list[str] = [
+        "00732A",
+        "#008631",
+        "#00ab41",
+        "#00c04b",
+        "#1fd655",
+        "#39e75f",
+        "#5ced73",
+        "#83f28f",
+        "#abf7b1",
+        "#cefad0",
+    ],
+):
     colors = list(reversed(colors))
     sort_index = np.array(data).argsort()
-    each_group_num = math.ceil(len(data ) / (len(colors)-1))
+    each_group_num = math.ceil(len(data) / (len(colors) - 1))
     result_colors = []
     print(len(colors))
     print(len(data))
@@ -44,7 +47,9 @@ def interpolate_in_colors(data: list,
         print(group_idx)
         print(color_lower, color_upper)
         print(interpolate_rgba(color_lower, color_upper, in_group_step))
-        interpolated_color = to_hex(interpolate_rgba(color_lower, color_upper, in_group_step))
+        interpolated_color = to_hex(
+            interpolate_rgba(color_lower, color_upper, in_group_step)
+        )
         result_colors.append(interpolated_color)
 
     return result_colors

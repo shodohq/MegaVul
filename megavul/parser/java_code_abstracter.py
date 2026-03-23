@@ -4,62 +4,87 @@ from tree_sitter import Node, Parser
 from megavul.parser.code_abstracter_base import CodeAbstracterBase
 from megavul.util.logging_util import global_logger
 
+
 class JavaCodeAbstracter(CodeAbstracterBase):
     """
-        this abstractor is used to abstract java methods
+    this abstractor is used to abstract java methods
     """
+
     def __init__(self, logger: logging.Logger):
         super().__init__(logger)
-        self.parser = self.get_parser('java')
+        self.parser = self.get_parser("java")
 
     @property
     def support_languages(self) -> list[str]:
-        return ['java']
+        return ["java"]
 
     def find_parser(self, language: str) -> Parser:
         return self.parser
 
-    def abstract_node(self, node: Node, node_abstract: Callable[[Node, str], None],
-                      abstract_type_map: dict[str, dict[str, str]]):
+    def abstract_node(
+        self,
+        node: Node,
+        node_abstract: Callable[[Node, str], None],
+        abstract_type_map: dict[str, dict[str, str]],
+    ):
         node_type = node.type
-        if node_type in ['identifier', 'type_identifier', ]:
-            if node.parent is None or node.parent.type in ['method_declaration', 'class_declaration',
-                                                           'constructor_declaration']:
+        if node_type in [
+            "identifier",
+            "type_identifier",
+        ]:
+            if node.parent is None or node.parent.type in [
+                "method_declaration",
+                "class_declaration",
+                "constructor_declaration",
+            ]:
                 # keep function/class/constructor  name, we do not abstract these name
                 return
 
-            cur_type = 'VAR'
+            cur_type = "VAR"
 
-            if node.parent.type == 'method_invocation' and node.parent.child_by_field_name('name') == node:
+            if (
+                node.parent.type == "method_invocation"
+                and node.parent.child_by_field_name("name") == node
+            ):
                 # function id
-                cur_type = 'FUNC'
-            elif node_type in ['type_identifier']:
+                cur_type = "FUNC"
+            elif node_type in ["type_identifier"]:
                 # do not abstract primitive data types: 'integral_type', 'floating_point_type', 'boolean_type'
-                cur_type = 'TYPE'
-            elif node.parent.type == 'labeled_statement':
-                cur_type = 'LABEL'
-            elif node.parent.type == 'field_access' and node.parent.child_by_field_name('field') == node:
-                cur_type = 'FIELD'
-            elif node.parent.type in ['annotation', 'marker_annotation']:
-                cur_type = 'ANNOTATION'
+                cur_type = "TYPE"
+            elif node.parent.type == "labeled_statement":
+                cur_type = "LABEL"
+            elif (
+                node.parent.type == "field_access"
+                and node.parent.child_by_field_name("field") == node
+            ):
+                cur_type = "FIELD"
+            elif node.parent.type in ["annotation", "marker_annotation"]:
+                cur_type = "ANNOTATION"
 
             assert cur_type in abstract_type_map.keys()
             node_abstract(node, cur_type)
-        elif node_type == 'string_literal':
-            node_abstract(node, 'STR')
-        elif node_type in ['block_comment', 'line_comment']:
-            node_abstract(node, 'COMMENT')
-        elif node_type in ['decimal_integer_literal', 'hex_integer_literal', 'octal_integer_literal',
-                           'binary_integer_literal', 'decimal_floating_point_literal',
-                           'hex_floating_point_literal', ]:
-            node_abstract(node, 'NUMBER')
-        elif node_type == 'character_literal':
-            node_abstract(node, 'CHAR')
+        elif node_type == "string_literal":
+            node_abstract(node, "STR")
+        elif node_type in ["block_comment", "line_comment"]:
+            node_abstract(node, "COMMENT")
+        elif node_type in [
+            "decimal_integer_literal",
+            "hex_integer_literal",
+            "octal_integer_literal",
+            "binary_integer_literal",
+            "decimal_floating_point_literal",
+            "hex_floating_point_literal",
+        ]:
+            node_abstract(node, "NUMBER")
+        elif node_type == "character_literal":
+            node_abstract(node, "CHAR")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     abstracter = JavaCodeAbstracter(global_logger)
-    print(abstracter.abstract_code("""
+    print(
+        abstracter.abstract_code(
+            """
 public class ClientHintsAnalyzer extends ClientHintsHeadersParser {
 
     public ClientHintsAnalyzer() {
@@ -165,4 +190,7 @@ public class ClientHintsAnalyzer extends ClientHintsHeadersParser {
         }
     }
 }
-}""", 'java')[0])
+}""",
+            "java",
+        )[0]
+    )

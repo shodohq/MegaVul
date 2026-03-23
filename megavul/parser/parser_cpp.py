@@ -1,29 +1,35 @@
 import re
-from pathlib import Path
-from tree_sitter import Language, Parser, TreeCursor, Tree, Node
+from tree_sitter import Tree, Node
 from megavul.parser.parser_clike import ParserCLike
-from megavul.parser.parser_util import ExtractedFunction, traverse_tree, node_split_from_file, split_from_file, traverse_cursor, \
-    split_from_file_maybe_flatten
+from megavul.parser.parser_util import (
+    ExtractedFunction,
+    traverse_tree,
+    node_split_from_file,
+    split_from_file,
+    traverse_cursor,
+    split_from_file_maybe_flatten,
+)
 from typing import Optional, Tuple
-from megavul.util.logging_util import global_logger
 
 
 class ParserCpp(ParserCLike):
     @property
     def language_name(self) -> str:
-        return 'cpp'
+        return "cpp"
 
     def can_handle_this_language(self, language_name: str) -> bool:
-        return language_name.lower() in ['cpp']
+        return language_name.lower() in ["cpp"]
 
-    def traverse_function_definition(self, func_node: Node , file_lines: list[str]) -> Optional[ExtractedFunction]:
+    def traverse_function_definition(
+        self, func_node: Node, file_lines: list[str]
+    ) -> Optional[ExtractedFunction]:
         cursor = func_node.walk()
 
         # in CPP the function return type may be `null` in class constructor
-        return_type_node = cursor.node.child_by_field_name('type')
+        return_type_node = cursor.node.child_by_field_name("type")
         return_type = None
         if return_type_node is not None:
-            return_type = node_split_from_file(file_lines,return_type_node)
+            return_type = node_split_from_file(file_lines, return_type_node)
             if isinstance(return_type, list):
                 return None
         cursor.goto_first_child()
@@ -36,30 +42,38 @@ class ParserCpp(ParserCLike):
         while True:
             node_type = cursor.node.type
 
-            if node_type == 'pointer_declarator':
+            if node_type == "pointer_declarator":
                 destruction_ptr_return_type_level += 1
                 while True:
                     cursor.goto_first_child()
-                    if cursor.node.type != 'pointer_declarator':
+                    if cursor.node.type != "pointer_declarator":
                         break
                     destruction_ptr_return_type_level += 1
 
-            if node_type == 'function_declarator':
+            if node_type == "function_declarator":
                 cursor.goto_first_child()
                 while True:
                     declarator_type = cursor.node.type
-                    if declarator_type == 'identifier':
-                        func_name = node_split_from_file(file_lines,cursor.node)
-                    elif declarator_type in ['qualified_identifier', 'destructor_name', 'field_identifier',
-                                             'operator_name']:
+                    if declarator_type == "identifier":
+                        func_name = node_split_from_file(file_lines, cursor.node)
+                    elif declarator_type in [
+                        "qualified_identifier",
+                        "destructor_name",
+                        "field_identifier",
+                        "operator_name",
+                    ]:
                         # e.g. NameSpace::Scanner::foo
                         func_name = node_split_from_file(file_lines, cursor.node)
-                    elif declarator_type == 'template_function':
+                    elif declarator_type == "template_function":
                         # e.g. bool foo<A>
-                        func_name = node_split_from_file(file_lines,cursor.node.child_by_field_name('name'))
-                    elif declarator_type == 'parameter_list':
+                        func_name = node_split_from_file(
+                            file_lines, cursor.node.child_by_field_name("name")
+                        )
+                    elif declarator_type == "parameter_list":
                         parameter_list_node = cursor.node
-                        parameter_list_signature = node_split_from_file(file_lines, cursor.node)
+                        parameter_list_signature = node_split_from_file(
+                            file_lines, cursor.node
+                        )
                     if not cursor.goto_next_sibling():
                         break
                 cursor.goto_parent()
@@ -68,7 +82,7 @@ class ParserCpp(ParserCLike):
                 break
 
         if parameter_list_node is None:
-            self.debug('[ERROR] this function missing parameter list, skip')
+            self.debug("[ERROR] this function missing parameter list, skip")
             return None
 
         parameter_list = []
@@ -77,22 +91,34 @@ class ParserCpp(ParserCLike):
         while True:
             # print('=================')
             # print(parameter_list_cursor.node.type,parameter_list_cursor.node.text)
-            if parameter_list_cursor.node.type == 'parameter_declaration':
+            if parameter_list_cursor.node.type == "parameter_declaration":
                 # extract all parameter
-                parameter_list.append(self.traverse_parameter_declaration(parameter_list_cursor.node,file_lines))
-            elif parameter_list_cursor.node.type == 'variadic_parameter_declaration':
+                parameter_list.append(
+                    self.traverse_parameter_declaration(
+                        parameter_list_cursor.node, file_lines
+                    )
+                )
+            elif parameter_list_cursor.node.type == "variadic_parameter_declaration":
                 # int main(...)   int main(Tail...)
-                parameter_list.append(self.traverse_variadic_parameter_declaration(parameter_list_cursor.node,file_lines))
-            elif parameter_list_cursor.node.type == 'optional_parameter_declaration':
-                parameter_list.append(self.traverse_optional_parameter_declaration(parameter_list_cursor.node,file_lines))
+                parameter_list.append(
+                    self.traverse_variadic_parameter_declaration(
+                        parameter_list_cursor.node, file_lines
+                    )
+                )
+            elif parameter_list_cursor.node.type == "optional_parameter_declaration":
+                parameter_list.append(
+                    self.traverse_optional_parameter_declaration(
+                        parameter_list_cursor.node, file_lines
+                    )
+                )
 
             if not parameter_list_cursor.goto_next_sibling():
                 break
 
-        compose_signature = ''
+        compose_signature = ""
         for i, p in enumerate(parameter_list):
             if i > 0:
-                compose_signature += ','
+                compose_signature += ","
             if p[1] is None:
                 compose_signature += p[0]
             else:
@@ -100,96 +126,145 @@ class ParserCpp(ParserCLike):
                 compose_signature += p[0][:insert_idx] + p[1] + p[0][insert_idx:]
             if len(p) == 4:  # default parameter default value
                 compose_signature += p[3]
-        compose_signature = f'({compose_signature})'
-
+        compose_signature = f"({compose_signature})"
 
         if destruction_ptr_return_type_level != 0:
-            return_type += '*' * destruction_ptr_return_type_level
+            return_type += "*" * destruction_ptr_return_type_level
 
         if type(parameter_list_signature) is str:
             parameter_list_signature = [parameter_list_signature]
 
-        if type(parameter_list_signature) is list:  # the parameter_list_signature may be span multilines, so the returned parameter_list_signature is `list` type
-            parameter_list_signature = list(map(lambda x: ParserCpp.remove_comments(x), parameter_list_signature))
-            parameter_list_signature = ''.join(parameter_list_signature)
+        if (
+            type(parameter_list_signature) is list
+        ):  # the parameter_list_signature may be span multilines, so the returned parameter_list_signature is `list` type
+            parameter_list_signature = list(
+                map(lambda x: ParserCpp.remove_comments(x), parameter_list_signature)
+            )
+            parameter_list_signature = "".join(parameter_list_signature)
 
             # remove multiline comment again
-            parameter_list_signature = ParserCpp.remove_comments(parameter_list_signature)
+            parameter_list_signature = ParserCpp.remove_comments(
+                parameter_list_signature
+            )
 
-        parameter_list_signature = parameter_list_signature.replace('\n', '').replace('\t', ' ')
-        parameter_list_signature = ' '.join(
-            parameter_list_signature.split())  # remove multiple whitespace with single whitespace
+        parameter_list_signature = parameter_list_signature.replace("\n", "").replace(
+            "\t", " "
+        )
+        parameter_list_signature = " ".join(
+            parameter_list_signature.split()
+        )  # remove multiple whitespace with single whitespace
 
         if func_name is None:
-            self.debug('[Function Name is None] this function missing function name')
+            self.debug("[Function Name is None] this function missing function name")
             return None
         elif type(func_name) is list:
-            func_name = ''.join(func_name)
+            func_name = "".join(func_name)
 
         if return_type is None:
             return_type = func_name
-            if return_type.find('~') >= 0:  # destructor name
-                return_type = ''
+            if return_type.find("~") >= 0:  # destructor name
+                return_type = ""
 
         func = node_split_from_file(file_lines, func_node)
-        func = ''.join(func)
-
+        func = "".join(func)
 
         # parameter_list_signature = parameter_list_signature[1:-1] # remove bracket
-        self.debug('=' * 80)
-        self.debug(f'function name  : {func_name}')
-        self.debug(f'parameters sig : {parameter_list_signature}')
-        self.debug(f'parameters     : {parameter_list}')
-        self.debug(f'return type    : {return_type}')
-        self.debug('=' * 80)
+        self.debug("=" * 80)
+        self.debug(f"function name  : {func_name}")
+        self.debug(f"parameters sig : {parameter_list_signature}")
+        self.debug(f"parameters     : {parameter_list}")
+        self.debug(f"return type    : {return_type}")
+        self.debug("=" * 80)
 
-        assert func_name is not None and parameter_list_signature is not None and return_type is not None
+        assert (
+            func_name is not None
+            and parameter_list_signature is not None
+            and return_type is not None
+        )
 
-        if compose_signature.replace(' ', '') != parameter_list_signature.replace(' ', ''):
-            self.debug(f'[Signature check error] [{compose_signature}] != [{parameter_list_signature}]')
+        if compose_signature.replace(" ", "") != parameter_list_signature.replace(
+            " ", ""
+        ):
+            self.debug(
+                f"[Signature check error] [{compose_signature}] != [{parameter_list_signature}]"
+            )
             return
 
-        return ExtractedFunction(func_name, parameter_list_signature, parameter_list, return_type,
-                                 func)
+        return ExtractedFunction(
+            func_name, parameter_list_signature, parameter_list, return_type, func
+        )
 
-
-    def traverse_optional_parameter_declaration(self, pd_cursor_node: Node, file_lines: list[str]) -> Tuple[str, str, int, str]:
+    def traverse_optional_parameter_declaration(
+        self, pd_cursor_node: Node, file_lines: list[str]
+    ) -> Tuple[str, str, int, str]:
         pd_cursor = pd_cursor_node.walk()
-        pd_start_point, pd_end_point = pd_cursor.node.start_point, pd_cursor.node.end_point
-        pd_lines = split_from_file(file_lines ,pd_start_point, pd_end_point, )
-        id_node = pd_cursor_node.child_by_field_name('declarator')
+        pd_start_point, pd_end_point = (
+            pd_cursor.node.start_point,
+            pd_cursor.node.end_point,
+        )
+        pd_lines = split_from_file(
+            file_lines,
+            pd_start_point,
+            pd_end_point,
+        )
+        id_node = pd_cursor_node.child_by_field_name("declarator")
         id = None
         if id_node is not None:
-            while id_node.type == 'pointer_declarator':
+            while id_node.type == "pointer_declarator":
                 id_node = id_node.children[1]
-            id = node_split_from_file(file_lines, id_node)
-            pd_lines = ParserCpp.multiline_replace(pd_lines,
-                                              ParserCpp.cal_relative_point(pd_start_point, id_node.start_point), id)
+            id_raw = node_split_from_file(file_lines, id_node)
+            if isinstance(id_raw, list):
+                # 複数行にまたがる宣言子は位置マーキングをスキップ
+                id = None
+            else:
+                id = id_raw
+                pd_lines = ParserCpp.multiline_replace(
+                    pd_lines,
+                    ParserCpp.cal_relative_point(pd_start_point, id_node.start_point),
+                    id,
+                )
 
-        pd_lines = ''.join(pd_lines).replace('\n', '').replace('\t', ' ')
+        pd_lines = "".join(pd_lines).replace("\n", "").replace("\t", " ")
         pd_lines = ParserCpp.remove_comments(pd_lines)
         default_value = None
-        if (re_res := re.search(r'=.*', pd_lines)) is not None:
+        if (re_res := re.search(r"=.*", pd_lines)) is not None:
             default_value = re_res.group()
-        type = pd_lines.replace(self.SPECIAL_IDENTIFIER, '').replace(default_value, '')
+        if default_value is None:
+            default_value = ""
+        type = pd_lines.replace(self.SPECIAL_IDENTIFIER, "").replace(default_value, "")
         type = type.strip()
-        assert default_value is not None
-        return type, id, pd_lines.index(self.SPECIAL_IDENTIFIER) if id is not None else -1, default_value
+        return (
+            type,
+            id,
+            pd_lines.index(self.SPECIAL_IDENTIFIER) if id is not None else -1,
+            default_value,
+        )
 
-
-    def traverse_variadic_parameter_declaration(self, pd_cursor_node: Node,  file_lines: list[str]) -> Tuple[str, str, int]:
-        if ''.join(node_split_from_file(file_lines,pd_cursor_node)).replace(' ', '') == '...':
-            return '...', '', -1
+    def traverse_variadic_parameter_declaration(
+        self, pd_cursor_node: Node, file_lines: list[str]
+    ) -> Tuple[str, str, int]:
+        if (
+            "".join(node_split_from_file(file_lines, pd_cursor_node)).replace(" ", "")
+            == "..."
+        ):
+            return "...", "", -1
         pd_cursor = pd_cursor_node.walk()
-        pd_start_point, pd_end_point = pd_cursor.node.start_point, pd_cursor.node.end_point
+        pd_start_point, pd_end_point = (
+            pd_cursor.node.start_point,
+            pd_cursor.node.end_point,
+        )
         pd_lines = split_from_file(file_lines, pd_start_point, pd_end_point)
 
         id = None
         found_identifier = False
         for node in traverse_cursor(pd_cursor):
-            if node.type == 'identifier':
-                id = split_from_file_maybe_flatten(file_lines,node.start_point, node.end_point)  # must be str ,not list
-                id_start = ParserCpp.cal_relative_point(pd_start_point, node.start_point)
+            if node.type == "identifier":
+                id = split_from_file_maybe_flatten(
+                    file_lines, node.start_point, node.end_point
+                )  # must be str ,not list
+                id_start = ParserCpp.cal_relative_point(
+                    pd_start_point, node.start_point
+                )
                 found_identifier = True
 
         if found_identifier:
@@ -197,48 +272,56 @@ class ParserCpp(ParserCLike):
         else:
             pass
 
-        pd_lines = ''.join(pd_lines).replace('\n', '').replace('\t', ' ')
+        pd_lines = "".join(pd_lines).replace("\n", "").replace("\t", " ")
         insert_index = -1
         if found_identifier:
             insert_index = pd_lines.index(ParserCpp.SPECIAL_IDENTIFIER)
-            type = pd_lines.replace(ParserCpp.SPECIAL_IDENTIFIER, '', 1)
+            type = pd_lines.replace(ParserCpp.SPECIAL_IDENTIFIER, "", 1)
         else:
             type = pd_lines
 
         type = type.strip()
         return type, id, insert_index
 
-
-    def traverse_parameter_declaration(self, pd_cursor_node: Node, file_lines: list[str]) -> Tuple[str, str, int]:
+    def traverse_parameter_declaration(
+        self, pd_cursor_node: Node, file_lines: list[str]
+    ) -> Tuple[str, str, int]:
         pd_cursor = pd_cursor_node.walk()
-        pd_start_point, pd_end_point = pd_cursor.node.start_point, pd_cursor.node.end_point
-        pd_lines = split_from_file(file_lines,pd_start_point, pd_end_point)
+        pd_start_point, pd_end_point = (
+            pd_cursor.node.start_point,
+            pd_cursor.node.end_point,
+        )
+        pd_lines = split_from_file(file_lines, pd_start_point, pd_end_point)
 
         id = None
         found_identifier = False
-        id_start : tuple[int,int]
+        id_start: tuple[int, int]
         for node in traverse_cursor(pd_cursor):
-            if node.type == 'identifier':
+            if node.type == "identifier":
                 # find the last identifier.  we me face `char __user *optval` , __user will be recognized as identifier
                 assert node.start_point[0] == node.end_point[0]
-                id = split_from_file_maybe_flatten(file_lines,node.start_point, node.end_point)  # must be str ,not list
-                id_start = ParserCLike.cal_relative_point(pd_start_point, node.start_point)
+                id = split_from_file_maybe_flatten(
+                    file_lines, node.start_point, node.end_point
+                )  # must be str ,not list
+                id_start = ParserCLike.cal_relative_point(
+                    pd_start_point, node.start_point
+                )
                 found_identifier = True
-            elif node.type == 'parameter_list':
+            elif node.type == "parameter_list":
                 break
 
         if found_identifier:
             pd_lines = ParserCLike.multiline_replace(pd_lines, id_start, id)
 
         # merge pd_lines to one line
-        pd_lines = ''.join(pd_lines).replace('\n', '').replace('\t', ' ')
+        pd_lines = "".join(pd_lines).replace("\n", "").replace("\t", " ")
         pd_lines = ParserCLike.remove_comments(pd_lines)
-        pd_lines = ' '.join(pd_lines.split())
+        pd_lines = " ".join(pd_lines.split())
 
         insert_index = -1
         if found_identifier:
             insert_index = pd_lines.index(ParserCLike.SPECIAL_IDENTIFIER)
-            type = pd_lines.replace(ParserCLike.SPECIAL_IDENTIFIER, '', 1)
+            type = pd_lines.replace(ParserCLike.SPECIAL_IDENTIFIER, "", 1)
         else:
             type = pd_lines
 
@@ -246,12 +329,10 @@ class ParserCpp(ParserCLike):
         assert type is not None
         return type, id, insert_index
 
-
-
     def find_function_nodes(self, tree: Tree) -> list[Node]:
         func_nodes: list[Node] = []
         for i in traverse_tree(tree):
-            if i.type == 'function_definition':
+            if i.type == "function_definition":
                 func_nodes.append(i)
 
         # if a function nested in a function definition , filter it
@@ -260,7 +341,10 @@ class ParserCpp(ParserCLike):
             need_add = True
             for j, other_s in enumerate(func_nodes):
                 if i != j:
-                    if other_s.start_point[0] <= s.start_point[0] and other_s.end_point[0] >= s.end_point[0]:
+                    if (
+                        other_s.start_point[0] <= s.start_point[0]
+                        and other_s.end_point[0] >= s.end_point[0]
+                    ):
                         need_add = False
             if need_add:
                 result_func_nodes.append(s)
@@ -280,8 +364,5 @@ class ParserCpp(ParserCLike):
         return extracted_funcs
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     ...
-
