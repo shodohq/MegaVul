@@ -141,7 +141,10 @@ class GitilesPlatformBase(GitPlatformBase):
     def can_handle_this_url(
         self, logger: logging.Logger, url: str, url_netloc: str
     ) -> bool:
-        return "googlesource.com" in url
+        # Accept hosts that are exactly 'googlesource.com' or any of its subdomains.
+        return bool(url_netloc) and (
+            url_netloc == "googlesource.com" or url_netloc.endswith(".googlesource.com")
+        )
 
 
 if __name__ == "__main__":
