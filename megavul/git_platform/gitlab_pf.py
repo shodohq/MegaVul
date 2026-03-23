@@ -85,7 +85,9 @@ def find_commits_from_issue_via_v4_api(
         if issue.state != "closed":
             return []
         commit_urls = []
-        for note in issue.notes.list(system=True):
+        # NOTE: get_all=True をつけないとページネーションされて一部のノートしか取れない可能性がある
+        # https://python-gitlab.readthedocs.io/en/latest/api-usage.html#pagination
+        for note in issue.notes.list(system=True, get_all=True):
             body: str = note.body
             parts = body.split(" ")
             if "closed via commit" in body and len(parts) >= 4:
