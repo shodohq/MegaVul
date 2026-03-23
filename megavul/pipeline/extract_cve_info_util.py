@@ -4,6 +4,7 @@ from megavul.git_platform.github_pf import find_commit_from_commit_msg_in_github
 from megavul.util.storage import StorageLocation
 from megavul.git_platform.gitweb_pf import find_gitweb_commits_in_search_page
 import re
+from urllib.parse import urlparse
 
 COMMIT_THRESHOLD = 5
 
@@ -69,7 +70,8 @@ def find_xen_commit_from_advisory(advisory_url: str) -> list[str]:
 
 
 def find_commit_from_chromium_code_review(review_url: str) -> Optional[str]:
-    assert "codereview.chromium.org" in review_url
+    parsed_url = urlparse(review_url)
+    assert parsed_url.hostname and parsed_url.hostname.endswith("codereview.chromium.org")
     review_page = get_bs4_parsed_html(review_url)
     issue_desc = review_page.find("div", id="issue-description")
     if issue_desc is None:
