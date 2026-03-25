@@ -131,6 +131,7 @@ class ParserGo(ParserBase):
 
         while True:
             node = cursor.node
+            assert node is not None
             if node.type == "parameter_declaration":
                 type_node = node.child_by_field_name("type")
                 if type_node is None:
@@ -180,6 +181,7 @@ class ParserGo(ParserBase):
             if cursor.goto_first_child():
                 while True:
                     node = cursor.node
+                    assert node is not None
                     if node.type == "parameter_declaration":
                         type_node = node.child_by_field_name("type")
                         if type_node:
@@ -203,6 +205,7 @@ class ParserGo(ParserBase):
 
         while True:
             node = cursor.node
+            assert node is not None
             if node.type == "parameter_declaration":
                 type_node = node.child_by_field_name("type")
                 if type_node:
