@@ -202,8 +202,15 @@ class TestFileFilter(GlobalFilter):
             return self.filter_c_cpp_test_file(file)
         elif crawling_language == CrawlingType.Java:
             return self.filter_java_test_file(file)
+        elif crawling_language == CrawlingType.Go:
+            return self.filter_go_test_file(file)
         # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテストファイルの判定ロジックを実装する
-        #   例: Go なら *_test.go パターンを検出する filter_go_test_file() を作成する
+        return False
+
+    def filter_go_test_file(self, file: CommitFile) -> bool:
+        # Go test files always end with _test.go
+        file_name = file.file_path.split("/")[-1]
+        return file_name.endswith("_test.go")
 
     def filter_java_test_file(self, file: CommitFile) -> bool:
         file_name = file.file_path.split("/")[-1].split(".")[0]
@@ -802,10 +809,21 @@ class TestFunctionFilter(LocalFilter):
         elif crawling_language == CrawlingType.Java:
             # The test methods for java are usually in the `xxxxxTest` file
             return False
+        elif crawling_language == CrawlingType.Go:
+            return self.go_filter(func_name)
         # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテスト関数の判定ロジックを実装する
-        #   例: Go なら "Test" や "Benchmark" で始まる関数名を検出する
         else:
             return False
+
+    def go_filter(self, func_name: str) -> bool:
+        # Go test functions start with Test or Benchmark, and ExampleXxx
+        # Strip receiver prefix if present: (ReceiverType).MethodName
+        base_name = func_name.split(".")[-1]
+        return (
+            base_name.startswith("Test")
+            or base_name.startswith("Benchmark")
+            or base_name.startswith("Example")
+        )
 
     def c_cpp_filter(self, func_name: str) -> bool:
         func_name = func_name.split("::")[-1]  # c++ func name

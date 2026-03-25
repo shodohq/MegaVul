@@ -12,7 +12,8 @@ dependencies:
   github-linguist: /usr/local/bin/github-linguist
 
 crawling_language:
-  c_cpp  # [c_cpp, java]
+  # ADD_MORE_LANGUAGE_NOTE: ここの凡例を変える
+  go  # [c_cpp, java, go]
 
 log_level:
   DEBUG # [DEBUG, INFO, WARNING, ERROR]

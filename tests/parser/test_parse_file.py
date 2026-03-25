@@ -1,7 +1,7 @@
 """
 tests/parser/test_parse_file.py
 
-ParserC / ParserCpp の parse_file() を実際のキャッシュファイルで動作確認する。
+ParserC / ParserCpp / ParserGo の parse_file() を実際のキャッシュファイルで動作確認する。
 
 tree-sitter の .so が未ビルドかつ CLI が使えない環境ではテストをスキップする。
 """
@@ -26,6 +26,14 @@ EPOLL_SOCKET_CPP = FIXTURES_DIR / "epoll_socket.cpp"
 # 複数行にまたがるパラメータ宣言子を含み、traverse_optional_parameter_declaration で
 # TypeError: replace() argument 1 must be str, not list を引き起こす
 CPP_HTTPLIB_TEST_CC = FIXTURES_DIR / "cpp_httplib_test.cc"
+
+# heroiclabs/nakama の login_attempt_cache.go（174行）
+# メソッド（ポインタレシーバ）・グループパラメータ（a, b string）・複数戻り値を含む
+LOGIN_ATTEMPT_CACHE_GO = FIXTURES_DIR / "login_attempt_cache.go"
+
+# heroiclabs/nakama の console_authenticate.go（199行）
+# 名前付き複数戻り値・グループパラメータ付きメソッド・単純 error 戻り値を含む
+CONSOLE_AUTHENTICATE_GO = FIXTURES_DIR / "console_authenticate.go"
 
 
 # ---- セッションスコープの parser fixture ----------------------------------------
@@ -186,3 +194,135 @@ class TestParserCppRegression:
         """yhirose/cpp-httplib の test.cc がクラッシュなく解析できる。"""
         funcs = run_parse_file(parser_cpp, CPP_HTTPLIB_TEST_CC, tmp_path)
         assert len(funcs) > 0
+
+
+# ---- ParserGo fixture -----------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def parser_go():
+    from megavul.parser.parser_go import ParserGo
+
+    p = ParserGo(logging.getLogger("test.parser_go"))
+    try:
+        _ = p.language  # cached_property → build_tree_sitter_language を起動
+    except RuntimeError as e:
+        pytest.skip(f"tree-sitter Go .so が利用不可: {e}")
+    return p
+
+
+# ---- ParserGo テスト (login_attempt_cache.go) -----------------------------------
+
+
+class TestParserGoLoginAttemptCache:
+    def test_extracts_expected_function_count(self, parser_go, tmp_path):
+        """login_attempt_cache.go から 6 つの関数/メソッドが抽出される。
+        goroutine 内の匿名関数リテラルはネスト除外される。"""
+        funcs = run_parse_file(parser_go, LOGIN_ATTEMPT_CACHE_GO, tmp_path)
+        assert len(funcs) == 6
+
+    def test_method_with_pointer_receiver(self, parser_go, tmp_path):
+        """(ls *lockoutStatus) trim(...) が (*lockoutStatus).trim として抽出される。"""
+        funcs = run_parse_file(parser_go, LOGIN_ATTEMPT_CACHE_GO, tmp_path)
+        f = func_by_name(funcs, "(*lockoutStatus).trim")
+        assert f["return_type"] == "bool"
+        params = f["parameter_list"]
+        assert len(params) == 2
+        types = [p[0] for p in params]
+        assert "time.Time" in types
+        assert "time.Duration" in types
+
+    def test_constructor_function(self, parser_go, tmp_path):
+        """パッケージレベル関数 NewLocalLoginAttemptCache が抽出される。"""
+        funcs = run_parse_file(parser_go, LOGIN_ATTEMPT_CACHE_GO, tmp_path)
+        f = func_by_name(funcs, "NewLocalLoginAttemptCache")
+        assert f["return_type"] == "LoginAttemptCache"
+        assert f["parameter_list"] == []
+
+    def test_grouped_parameter_expansion(self, parser_go, tmp_path):
+        """Allow(account, ip string) のグループパラメータが 2 エントリに展開される。"""
+        funcs = run_parse_file(parser_go, LOGIN_ATTEMPT_CACHE_GO, tmp_path)
+        f = func_by_name(funcs, "(*LocalLoginAttemptCache).Allow")
+        assert f["return_type"] == "bool"
+        params = f["parameter_list"]
+        assert len(params) == 2
+        # 両パラメータの型は string、名前は account と ip
+        assert all(p[0] == "string" for p in params)
+        names = [p[1] for p in params]
+        assert "account" in names
+        assert "ip" in names
+
+    def test_multiple_return_types(self, parser_go, tmp_path):
+        """Add(...) (LockoutType, time.Time) の複数戻り値が括弧付き文字列で返る。"""
+        funcs = run_parse_file(parser_go, LOGIN_ATTEMPT_CACHE_GO, tmp_path)
+        f = func_by_name(funcs, "(*LocalLoginAttemptCache).Add")
+        ret = f["return_type"]
+        assert ret.startswith("(") and ret.endswith(")")
+        assert "LockoutType" in ret
+        assert "time.Time" in ret
+
+    def test_no_return_type_method(self, parser_go, tmp_path):
+        """Stop() の戻り値なしメソッドの return_type が空文字列になる。"""
+        funcs = run_parse_file(parser_go, LOGIN_ATTEMPT_CACHE_GO, tmp_path)
+        f = func_by_name(funcs, "(*LocalLoginAttemptCache).Stop")
+        assert f["return_type"] == ""
+        assert f["parameter_list"] == []
+
+
+# ---- ParserGo テスト (console_authenticate.go) ----------------------------------
+
+
+class TestParserGoConsoleAuthenticate:
+    def test_extracts_expected_function_count(self, parser_go, tmp_path):
+        """console_authenticate.go から 5 つの関数/メソッドが抽出される。"""
+        funcs = run_parse_file(parser_go, CONSOLE_AUTHENTICATE_GO, tmp_path)
+        assert len(funcs) == 5
+
+    def test_method_returns_error(self, parser_go, tmp_path):
+        """(*ConsoleTokenClaims).Valid() が error を返す。"""
+        funcs = run_parse_file(parser_go, CONSOLE_AUTHENTICATE_GO, tmp_path)
+        f = func_by_name(funcs, "(*ConsoleTokenClaims).Valid")
+        assert f["return_type"] == "error"
+        assert f["parameter_list"] == []
+
+    def test_function_with_named_multi_return(self, parser_go, tmp_path):
+        """parseConsoleToken の名前付き複数戻り値の型が抽出される。
+        名前は無視され (id, username, email string, ...) → (string, ...) となる。"""
+        funcs = run_parse_file(parser_go, CONSOLE_AUTHENTICATE_GO, tmp_path)
+        f = func_by_name(funcs, "parseConsoleToken")
+        ret = f["return_type"]
+        assert ret.startswith("(") and ret.endswith(")")
+        assert "string" in ret
+        assert "bool" in ret
+        params = f["parameter_list"]
+        assert len(params) == 2
+        types = [p[0] for p in params]
+        assert "[]byte" in types
+        assert "string" in types
+
+    def test_method_with_multiple_return(self, parser_go, tmp_path):
+        """(*ConsoleServer).Authenticate が (*console.ConsoleSession, error) を返す。"""
+        funcs = run_parse_file(parser_go, CONSOLE_AUTHENTICATE_GO, tmp_path)
+        f = func_by_name(funcs, "(*ConsoleServer).Authenticate")
+        ret = f["return_type"]
+        assert ret.startswith("(") and ret.endswith(")")
+        assert "error" in ret
+        params = f["parameter_list"]
+        assert len(params) == 2
+        names = [p[1] for p in params]
+        assert "ctx" in names
+        assert "in" in names
+
+    def test_grouped_params_in_method(self, parser_go, tmp_path):
+        """lookupConsoleUser(ctx, unameOrEmail, password, ip string) の
+        グループパラメータが 4 エントリに展開される。"""
+        funcs = run_parse_file(parser_go, CONSOLE_AUTHENTICATE_GO, tmp_path)
+        f = func_by_name(funcs, "(*ConsoleServer).lookupConsoleUser")
+        params = f["parameter_list"]
+        # ctx context.Context + unameOrEmail, password, ip string = 4 params
+        assert len(params) == 4
+        names = [p[1] for p in params]
+        assert "ctx" in names
+        assert "unameOrEmail" in names
+        assert "password" in names
+        assert "ip" in names

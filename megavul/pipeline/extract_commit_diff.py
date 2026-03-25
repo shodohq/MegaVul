@@ -17,6 +17,7 @@ from megavul.git_platform.common import (
     CveWithCommitInfo,
 )
 from megavul.parser.parser_java import ParserJava
+from megavul.parser.parser_go import ParserGo
 from megavul.parser.parser_util import ExtractedFunction
 from megavul.pipeline.extract_commit_diff_filter import (
     run_filters,
@@ -111,6 +112,9 @@ def determine_all_repo_types(
         elif crawling_language == CrawlingType.Java:
             # for java projects, all files are java
             repo_type_mapping[repo_name] = RepoType.Java
+        elif crawling_language == CrawlingType.Go:
+            # for go projects, all files are go
+            repo_type_mapping[repo_name] = RepoType.Go
         # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して repo_type_mapping に適切な RepoType を設定する
         else:
             raise RuntimeError(f"{crawling_language} is not supported")
@@ -142,7 +146,9 @@ def get_file_type(repo_type: RepoType, f_name: str, fp: Path) -> str:
             return detect_language  # 'objective-c'
     elif crawling_language == CrawlingType.Java:
         return "java"
-    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してファイルタイプ文字列を返す (例: elif ... Go: return "go")
+    elif crawling_language == CrawlingType.Go:
+        return "go"
+    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してファイルタイプ文字列を返す
 
     raise RuntimeError(f"Unknown file type for {fp}")
 
@@ -156,6 +162,8 @@ def parse_all_commit_files(
         parser_list = [ParserC(global_logger), ParserCpp(global_logger)]
     elif crawling_language == CrawlingType.Java:
         parser_list = [ParserJava(global_logger)]
+    elif crawling_language == CrawlingType.Go:
+        parser_list = [ParserGo(global_logger)]
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の Parser インスタンスを parser_list に設定する
     #   対応する megavul/parser/parser_<lang>.py も新規作成が必要
     else:
@@ -409,11 +417,14 @@ def build_parser():
         parser_list = [ParserC(global_logger), ParserCpp(global_logger)]
     elif crawling_language == CrawlingType.Java:
         parser_list = [ParserJava(global_logger)]
+    elif crawling_language == CrawlingType.Go:
+        parser_list = [ParserGo(global_logger)]
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の Parser インスタンスを設定する
     else:
         raise RuntimeError(f"Parser not found for {crawling_language}")
     for parser in parser_list:
         global_logger.info(f"Building {parser.parser_name} parser")
+        _ = parser.language  # trigger tree-sitter .so build in main process
 
 
 def extract_successful_parsed_commit(
