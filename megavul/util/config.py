@@ -6,12 +6,13 @@ __all__ = ["config_file", "crawling_language", "CrawlingType"]
 
 # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには SUPPORT_CRAWLING_LANGUAGE に言語名文字列を追加し、
 #   CrawlingType enum に対応するエントリを追加する必要がある
-SUPPORT_CRAWLING_LANGUAGE = ["c_cpp", "java"]
+SUPPORT_CRAWLING_LANGUAGE = ["c_cpp", "java", "go"]
 
 
 class CrawlingType(StrEnum):
     C_CPP = "c_cpp"
     Java = "java"
+    Go = "go"
     # ADD_MORE_LANGUAGE_NOTE: 新しい言語を追加する
 
 

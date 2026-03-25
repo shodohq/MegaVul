@@ -201,6 +201,15 @@ def __safe_get_request(url: str) -> Optional[requests.Response]:
                 global_logger.info(
                     f"{url} status code {res.status_code}, retry left:{retry_cnt}"
                 )
+
+                # git.kernel.orgはAnubisを導入しているのでリトライしない
+                # TODO: モンキーパッチすぎるのでいつかよく検討する
+                if url.find("git.kernel.org") != -1:
+                    global_logger.debug(
+                        "git.kernel.org detected, not retrying for this url"
+                    )
+                    break
+
                 sleep_time = (
                     30 if res.status_code == 429 else 10
                 )  # HTTP 429 Too Many Requests response status code
@@ -335,8 +344,9 @@ def convert_to_jvm_proxy(proxy_dict: dict) -> str:
 
 
 def build_tree_sitter_language(language_name: str, debug_mode=False) -> Language:
-    assert language_name in ["c", "cpp", "java"], (
-        "Only support c/cpp/java right now, you can modified this assertion to add more language"
+    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには "go" などをこのリストに追加する
+    assert language_name in ["c", "cpp", "java", "go"], (
+        "Only support c/cpp/java/go right now, you can modified this assertion to add more language"
     )
     # now we only support c/cpp tree-sitter, but you can add more languages
     tree_sitter_name = f"tree-sitter-{language_name}"
