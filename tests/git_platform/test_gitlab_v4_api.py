@@ -232,7 +232,7 @@ class TestFindCommitsFromIssueViaV4Api:
         gl = self._make_project("closed", notes)
         self.func(gl, "GNOME/gimp", 1)
         issue = gl.projects.get.return_value.issues.get.return_value
-        issue.notes.list.assert_called_once_with(system=True)
+        issue.notes.list.assert_called_once_with(system=True, get_all=True)
 
 
 # ---------------------------------------------------------------------------
