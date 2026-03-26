@@ -18,6 +18,7 @@ from megavul.git_platform.common import (
 )
 from megavul.parser.parser_java import ParserJava
 from megavul.parser.parser_go import ParserGo
+from megavul.parser.parser_python import ParserPython
 from megavul.parser.parser_util import ExtractedFunction
 from megavul.pipeline.extract_commit_diff_filter import (
     run_filters,
@@ -115,6 +116,9 @@ def determine_all_repo_types(
         elif crawling_language == CrawlingType.Go:
             # for go projects, all files are go
             repo_type_mapping[repo_name] = RepoType.Go
+        elif crawling_language == CrawlingType.Python:
+            # for python projects, all files are python
+            repo_type_mapping[repo_name] = RepoType.Python
         # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して repo_type_mapping に適切な RepoType を設定する
         else:
             raise RuntimeError(f"{crawling_language} is not supported")
@@ -148,6 +152,8 @@ def get_file_type(repo_type: RepoType, f_name: str, fp: Path) -> str:
         return "java"
     elif crawling_language == CrawlingType.Go:
         return "go"
+    elif crawling_language == CrawlingType.Python:
+        return "python"
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してファイルタイプ文字列を返す
 
     raise RuntimeError(f"Unknown file type for {fp}")
@@ -164,6 +170,8 @@ def parse_all_commit_files(
         parser_list = [ParserJava(global_logger)]
     elif crawling_language == CrawlingType.Go:
         parser_list = [ParserGo(global_logger)]
+    elif crawling_language == CrawlingType.Python:
+        parser_list = [ParserPython(global_logger)]
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の Parser インスタンスを parser_list に設定する
     #   対応する megavul/parser/parser_<lang>.py も新規作成が必要
     else:
@@ -419,6 +427,8 @@ def build_parser():
         parser_list = [ParserJava(global_logger)]
     elif crawling_language == CrawlingType.Go:
         parser_list = [ParserGo(global_logger)]
+    elif crawling_language == CrawlingType.Python:
+        parser_list = [ParserPython(global_logger)]
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の Parser インスタンスを設定する
     else:
         raise RuntimeError(f"Parser not found for {crawling_language}")

@@ -345,6 +345,12 @@ def convert_to_jvm_proxy(proxy_dict: dict) -> str:
 
 def build_tree_sitter_language(language_name: str, debug_mode=False) -> Language:
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには "go" などをこのリストに追加する
+    # Python は PyPI パッケージから直接 Language オブジェクトを取得する
+    if language_name == "python":
+        import tree_sitter_python as tspython
+
+        return Language(tspython.language())
+
     assert language_name in ["c", "cpp", "java", "go"], (
         "Only support c/cpp/java/go right now, you can modified this assertion to add more language"
     )

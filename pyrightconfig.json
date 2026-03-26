@@ -1,0 +1,12 @@
+{
+  "include": ["megavul", "tests"],
+  "exclude": [
+    ".venv",
+    "megavul/tree-sitter",
+    "megavul/storage",
+    "megavul/joern"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.13"
+}
