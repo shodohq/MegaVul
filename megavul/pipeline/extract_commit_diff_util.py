@@ -68,6 +68,7 @@ class RepoType(StrEnum):
     Java = "java"
     Go = "go"
     Python = "python"
+    JavaScript = "javascript"
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには RepoType enum に新しいエントリを追加する
 
 

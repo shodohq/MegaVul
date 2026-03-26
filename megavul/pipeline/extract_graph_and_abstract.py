@@ -8,6 +8,7 @@ from megavul.parser.clike_code_abstracter import CLikeCodeAbstracter
 from megavul.parser.java_code_abstracter import JavaCodeAbstracter
 from megavul.parser.go_code_abstracter import GoCodeAbstracter
 from megavul.parser.python_code_abstracter import PythonCodeAbstracter
+from megavul.parser.javascript_code_abstracter import JavaScriptCodeAbstracter
 from megavul.pipeline.json_save_location import (
     cve_with_parsed_and_filtered_commit_json_path,
     cve_with_graph_abstract_commit_json_path,
@@ -110,6 +111,8 @@ def run_joern_once(timeout) -> int:
         generate_test = "io.joern.go2cpg.io.MegaVulGraphGenerateForGoTest"
     elif crawling_language == CrawlingType.Python:
         generate_test = "io.joern.pysrc2cpg.MegaVulGraphGenerateForPythonTest"
+    elif crawling_language == CrawlingType.JavaScript:
+        generate_test = "io.joern.jssrc2cpg.io.MegaVulGraphGenerateForJavaScriptTest"
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して Joern のテストクラス名を指定する
     #   対応する Scala テストファイルを megavul/scala/ 以下に新規作成し、Joern に言語フロントエンドが必要
     else:
@@ -201,6 +204,11 @@ def call_joern_to_generate_graph():
             StorageLocation.scala_script_dir()
             / "MegaVulGraphGenerateForPythonTest.scala"
         )
+    elif crawling_language == CrawlingType.JavaScript:
+        joern_script_path = (
+            StorageLocation.scala_script_dir()
+            / "MegaVulGraphGenerateForJavaScriptTest.scala"
+        )
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して言語用の Scala スクリプトパスを指定する
     else:
         raise RuntimeError(f"Scala file not found for {crawling_language}")
@@ -247,6 +255,13 @@ def call_joern_to_generate_graph():
         )
         python_test_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy(joern_script_path, python_test_dir / joern_script_name)
+    elif crawling_language == CrawlingType.JavaScript:
+        js_test_dir = (
+            joern_path
+            / "joern-cli/frontends/jssrc2cpg/src/test/scala/io/joern/jssrc2cpg/io"
+        )
+        js_test_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy(joern_script_path, js_test_dir / joern_script_name)
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して Joern フロントエンド内の
     #   適切なテストディレクトリへ Scala スクリプトをコピーする先を指定する
     else:
@@ -420,6 +435,8 @@ def abstracting_functions(logger: logging.Logger, cve: CveWithCommitInfo):
         code_abstracter = GoCodeAbstracter(logger)
     elif crawling_language == CrawlingType.Python:
         code_abstracter = PythonCodeAbstracter(logger)
+    elif crawling_language == CrawlingType.JavaScript:
+        code_abstracter = JavaScriptCodeAbstracter(logger)
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の CodeAbstracter を設定する
     #   対応する megavul/parser/<lang>_code_abstracter.py も新規作成が必要
     else:
