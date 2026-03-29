@@ -67,6 +67,9 @@ def generate_source_file(
             for file in commit.files:
                 this_file_dir = this_commit_dir / file.file_name
                 file_language = file.language
+                # 言語名とファイル拡張子が異なる場合のマッピング
+                _lang_to_ext = {"python": "py"}
+                file_ext = _lang_to_ext.get(file_language, file_language)
 
                 vul_func: VulnerableFunction
                 for idx, vul_func in enumerate(file.vulnerable_functions):
@@ -74,11 +77,11 @@ def generate_source_file(
                     func_dir = this_file_dir / "vul"
                     save_str(
                         vul_func.func_before,
-                        func_dir / "before" / idx / f"{idx}.{file_language}",
+                        func_dir / "before" / idx / f"{idx}.{file_ext}",
                     )
                     save_str(
                         vul_func.func_after,
-                        func_dir / "after" / idx / f"{idx}.{file_language}",
+                        func_dir / "after" / idx / f"{idx}.{file_ext}",
                     )
 
                 non_vul_func: NonVulnerableFunction
@@ -86,7 +89,7 @@ def generate_source_file(
                     idx = str(idx)
                     func_dir = this_file_dir / "non_vul"
                     save_str(
-                        non_vul_func.func, func_dir / idx / f"{idx}.{file_language}"
+                        non_vul_func.func, func_dir / idx / f"{idx}.{file_ext}"
                     )
 
     save_data_as_json(index_set, save_index_file)
