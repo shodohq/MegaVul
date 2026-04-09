@@ -204,6 +204,8 @@ class TestFileFilter(GlobalFilter):
             return self.filter_java_test_file(file)
         elif crawling_language == CrawlingType.Go:
             return self.filter_go_test_file(file)
+        elif crawling_language == CrawlingType.Python:
+            return self.filter_python_test_file(file)
         # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテストファイルの判定ロジックを実装する
         return False
 
@@ -211,6 +213,19 @@ class TestFileFilter(GlobalFilter):
         # Go test files always end with _test.go
         file_name = file.file_path.split("/")[-1]
         return file_name.endswith("_test.go")
+
+    def filter_python_test_file(self, file: CommitFile) -> bool:
+        # pytest/unittest conventions: test_*.py or *_test.py
+        # Also filter files in test/tests directories
+        file_name = file.file_path.split("/")[-1]
+        base_name = file_name.rsplit(".", 1)[0]
+        if base_name.startswith("test_") or base_name.endswith("_test"):
+            return True
+        path_parts = file.file_path.split("/")[:-1]
+        for part in path_parts:
+            if part.lower() in ("test", "tests", "testing"):
+                return True
+        return False
 
     def filter_java_test_file(self, file: CommitFile) -> bool:
         file_name = file.file_path.split("/")[-1].split(".")[0]
@@ -811,6 +826,8 @@ class TestFunctionFilter(LocalFilter):
             return False
         elif crawling_language == CrawlingType.Go:
             return self.go_filter(func_name)
+        elif crawling_language == CrawlingType.Python:
+            return self.python_filter(func_name)
         # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテスト関数の判定ロジックを実装する
         else:
             return False
@@ -824,6 +841,12 @@ class TestFunctionFilter(LocalFilter):
             or base_name.startswith("Benchmark")
             or base_name.startswith("Example")
         )
+
+    def python_filter(self, func_name: str) -> bool:
+        # pytest: functions starting with test_ (e.g. ClassName.test_method)
+        # unittest fixtures: setUp, tearDown
+        base_name = func_name.split(".")[-1]
+        return base_name.startswith("test_") or base_name in ("setUp", "tearDown")
 
     def c_cpp_filter(self, func_name: str) -> bool:
         func_name = func_name.split("::")[-1]  # c++ func name

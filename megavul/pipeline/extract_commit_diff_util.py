@@ -67,6 +67,7 @@ class RepoType(StrEnum):
     Mix = "mix"  # CPP and C mix
     Java = "java"
     Go = "go"
+    Python = "python"
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには RepoType enum に新しいエントリを追加する
 
 

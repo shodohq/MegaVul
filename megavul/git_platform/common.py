@@ -171,6 +171,7 @@ CFileExtension = ["c"]
 CppFileExtension = ["cc", "cpp", "cxx", "hpp", "hxx", "hh"]
 JavaFileExtension = ["java"]
 GoFileExtension = ["go"]
+PythonFileExtension = ["py"]
 # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには拡張子リストを追加する
 AcceptedFileExtension: list[str] = [
     *HeaderExtension,
@@ -190,6 +191,9 @@ def select_file_extension():
     elif crawling_language == CrawlingType.Go:
         global_logger.info("Selecting Go file extension filter...")
         AcceptedFileExtension = [*GoFileExtension]
+    elif crawling_language == CrawlingType.Python:
+        global_logger.info("Selecting Python file extension filter...")
+        AcceptedFileExtension = [*PythonFileExtension]
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して AcceptedFileExtension を設定する
     else:
         # extend other programming languages

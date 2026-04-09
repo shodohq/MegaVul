@@ -7,6 +7,7 @@ from time import sleep
 from megavul.parser.clike_code_abstracter import CLikeCodeAbstracter
 from megavul.parser.java_code_abstracter import JavaCodeAbstracter
 from megavul.parser.go_code_abstracter import GoCodeAbstracter
+from megavul.parser.python_code_abstracter import PythonCodeAbstracter
 from megavul.pipeline.json_save_location import (
     cve_with_parsed_and_filtered_commit_json_path,
     cve_with_graph_abstract_commit_json_path,
@@ -66,6 +67,9 @@ def generate_source_file(
             for file in commit.files:
                 this_file_dir = this_commit_dir / file.file_name
                 file_language = file.language
+                # 言語名とファイル拡張子が異なる場合のマッピング
+                _lang_to_ext = {"python": "py"}
+                file_ext = _lang_to_ext.get(file_language, file_language)
 
                 vul_func: VulnerableFunction
                 for idx, vul_func in enumerate(file.vulnerable_functions):
@@ -73,11 +77,11 @@ def generate_source_file(
                     func_dir = this_file_dir / "vul"
                     save_str(
                         vul_func.func_before,
-                        func_dir / "before" / idx / f"{idx}.{file_language}",
+                        func_dir / "before" / idx / f"{idx}.{file_ext}",
                     )
                     save_str(
                         vul_func.func_after,
-                        func_dir / "after" / idx / f"{idx}.{file_language}",
+                        func_dir / "after" / idx / f"{idx}.{file_ext}",
                     )
 
                 non_vul_func: NonVulnerableFunction
@@ -85,7 +89,7 @@ def generate_source_file(
                     idx = str(idx)
                     func_dir = this_file_dir / "non_vul"
                     save_str(
-                        non_vul_func.func, func_dir / idx / f"{idx}.{file_language}"
+                        non_vul_func.func, func_dir / idx / f"{idx}.{file_ext}"
                     )
 
     save_data_as_json(index_set, save_index_file)
@@ -104,6 +108,8 @@ def run_joern_once(timeout) -> int:
         generate_test = "io.joern.javasrc2cpg.querying.MegaVulGraphGenerateForJavaTest"
     elif crawling_language == CrawlingType.Go:
         generate_test = "io.joern.go2cpg.io.MegaVulGraphGenerateForGoTest"
+    elif crawling_language == CrawlingType.Python:
+        generate_test = "io.joern.pysrc2cpg.MegaVulGraphGenerateForPythonTest"
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して Joern のテストクラス名を指定する
     #   対応する Scala テストファイルを megavul/scala/ 以下に新規作成し、Joern に言語フロントエンドが必要
     else:
@@ -190,6 +196,11 @@ def call_joern_to_generate_graph():
         joern_script_path = (
             StorageLocation.scala_script_dir() / "MegaVulGraphGenerateForGoTest.scala"
         )
+    elif crawling_language == CrawlingType.Python:
+        joern_script_path = (
+            StorageLocation.scala_script_dir()
+            / "MegaVulGraphGenerateForPythonTest.scala"
+        )
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して言語用の Scala スクリプトパスを指定する
     else:
         raise RuntimeError(f"Scala file not found for {crawling_language}")
@@ -229,6 +240,13 @@ def call_joern_to_generate_graph():
         )
         go_test_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy(joern_script_path, go_test_dir / joern_script_name)
+    elif crawling_language == CrawlingType.Python:
+        python_test_dir = (
+            joern_path
+            / "joern-cli/frontends/pysrc2cpg/src/test/scala/io/joern/pysrc2cpg"
+        )
+        python_test_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy(joern_script_path, python_test_dir / joern_script_name)
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して Joern フロントエンド内の
     #   適切なテストディレクトリへ Scala スクリプトをコピーする先を指定する
     else:
@@ -400,6 +418,8 @@ def abstracting_functions(logger: logging.Logger, cve: CveWithCommitInfo):
         code_abstracter = JavaCodeAbstracter(logger)
     elif crawling_language == CrawlingType.Go:
         code_abstracter = GoCodeAbstracter(logger)
+    elif crawling_language == CrawlingType.Python:
+        code_abstracter = PythonCodeAbstracter(logger)
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の CodeAbstracter を設定する
     #   対応する megavul/parser/<lang>_code_abstracter.py も新規作成が必要
     else:
