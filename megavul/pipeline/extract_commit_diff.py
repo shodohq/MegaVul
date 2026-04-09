@@ -130,6 +130,12 @@ def determine_all_repo_types(
 
 
 def get_file_type(repo_type: RepoType, f_name: str, fp: Path) -> str:
+    """
+    ファイルの言語種別を文字列で返す（例: "c", "cpp", "java", "go", "javascript"）。
+    返された文字列は Parser.can_handle_this_language() に渡され、どのパーサーを使うか振り分けるために使われる。
+    C/C++ のみ、.h ヘッダーファイルが両言語で共有されるため linguist で内容判定を行う。
+    Java / Go / JavaScript は単一言語なので常に固定文字列を返す。
+    """
     f_ext = f_name.split(".")[-1]
 
     if crawling_language == CrawlingType.C_CPP:
@@ -159,7 +165,7 @@ def get_file_type(repo_type: RepoType, f_name: str, fp: Path) -> str:
         return "python"
     elif crawling_language == CrawlingType.JavaScript:
         return "javascript"
-    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してファイルタイプ文字列を返す
+    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加する
 
     raise RuntimeError(f"Unknown file type for {fp}")
 
@@ -436,6 +442,8 @@ def build_parser():
         parser_list = [ParserGo(global_logger)]
     elif crawling_language == CrawlingType.Python:
         parser_list = [ParserPython(global_logger)]
+    elif crawling_language == CrawlingType.JavaScript:
+        parser_list = [ParserJavaScript(global_logger)]
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の Parser インスタンスを設定する
     else:
         raise RuntimeError(f"Parser not found for {crawling_language}")

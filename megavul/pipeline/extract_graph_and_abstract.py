@@ -44,6 +44,19 @@ generate_source_dir = (
 )
 graph_save_dir = StorageLocation.result_dir() / crawling_language / "graph"
 
+# cloc/linguist が返す言語名（小文字）と、Joern が期待するファイル拡張子のマッピング。
+# デフォルト（キーなし）は言語名をそのまま拡張子として使う。
+_LANGUAGE_TO_EXT: dict[str, str] = {
+    "javascript": "js",
+    "typescript": "ts",
+    "python": "py",
+}
+
+
+def _language_to_ext(language: str) -> str:
+    """言語名をファイル拡張子に変換する。"""
+    return _LANGUAGE_TO_EXT.get(language, language)
+
 
 def generate_source_file(
     cve_with_commit: list[CveWithCommitInfo], using_cache: bool = False
@@ -67,10 +80,7 @@ def generate_source_file(
 
             for file in commit.files:
                 this_file_dir = this_commit_dir / file.file_name
-                file_language = file.language
-                # 言語名とファイル拡張子が異なる場合のマッピング
-                _lang_to_ext = {"python": "py"}
-                file_ext = _lang_to_ext.get(file_language, file_language)
+                file_ext = _language_to_ext(file.language)
 
                 vul_func: VulnerableFunction
                 for idx, vul_func in enumerate(file.vulnerable_functions):
@@ -89,9 +99,7 @@ def generate_source_file(
                 for idx, non_vul_func in enumerate(file.non_vulnerable_functions):
                     idx = str(idx)
                     func_dir = this_file_dir / "non_vul"
-                    save_str(
-                        non_vul_func.func, func_dir / idx / f"{idx}.{file_ext}"
-                    )
+                    save_str(non_vul_func.func, func_dir / idx / f"{idx}.{file_ext}")
 
     save_data_as_json(index_set, save_index_file)
 
@@ -149,9 +157,15 @@ def run_joern_build():
     run the following code pre-build the joern and download scala dependencies.
     """
     global_logger.info("Joern begin download dependencies and build")
+    working_dir = StorageLocation.joern_dir()
     my_env = os.environ.copy()
     return_code = subprocess.check_call(
-        "sbt exit", shell=True, text=True, env=my_env, stderr=subprocess.STDOUT
+        "sbt exit",
+        shell=True,
+        text=True,
+        env=my_env,
+        cwd=working_dir,
+        stderr=subprocess.STDOUT,
     )
     if return_code != 0:
         raise RuntimeError("Joern build failed. please see the error message")
@@ -162,7 +176,8 @@ def run_joern():
     run_joern_cnt = 0
     global_logger.info("[Joern] begin run joern!")
     while True:
-        return_code = run_joern_once(70)
+        # for javascript, make it bigger.
+        return_code = run_joern_once(3600)
         if return_code > 0:
             global_logger.info("[Joern] joern completely!")
             break
@@ -225,6 +240,17 @@ def call_joern_to_generate_graph():
             f"Missing generate graph script file in {joern_script_path}."
         )
         return
+
+    # JGit (used by sbt-dynver) does not support git worktrees and throws
+    # NoWorkTreeException when it finds a worktree entry instead of a normal repo.
+    # Initializing a local git repo inside joern_path prevents JGit from
+    # traversing up to the parent worktree.
+    joern_git_dir = joern_path / ".git"
+    if not joern_git_dir.exists():
+        global_logger.info(
+            f"Initializing local git repo in {joern_path} to workaround JGit worktree issue..."
+        )
+        subprocess.check_call(["git", "init", str(joern_path)])
 
     # copy Test script, we will run this TestFile later
     if crawling_language == CrawlingType.C_CPP:

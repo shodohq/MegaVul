@@ -138,7 +138,9 @@ class TestParserJavaScriptSample:
         """全関数の func フィールドが空でない。"""
         funcs = run_parse_file(parser_javascript, SAMPLE_JS, tmp_path)
         for f in funcs:
-            assert f["func"].strip(), f"func_name={f['func_name']} の func フィールドが空"
+            assert f["func"].strip(), (
+                f"func_name={f['func_name']} の func フィールドが空"
+            )
 
     def test_parameter_list_structure(self, parser_javascript, tmp_path):
         """parameter_list の各エントリが (type, name, int) の3要素になっている。"""
