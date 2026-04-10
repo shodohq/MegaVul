@@ -38,7 +38,7 @@ def outer_with_nested(n: int) -> int:
 
 
 # [5] top-level function with a decorator
-@some_decorator  # type: ignore[name-defined]
+@some_decorator  # type: ignore[name-defined]  # noqa: F821
 def decorated_top_level(value: Optional[int] = None) -> bool:
     return value is not None
 
@@ -49,7 +49,6 @@ def decorated_top_level(value: Optional[int] = None) -> bool:
 
 
 class DataProcessor:
-
     # [6] __init__ – no return type annotation
     def __init__(self, config: dict):
         self.config = config

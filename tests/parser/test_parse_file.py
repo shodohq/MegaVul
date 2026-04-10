@@ -424,7 +424,9 @@ class TestParserPythonSessionManager:
         """全関数の func フィールドが空でない。"""
         funcs = run_parse_file(parser_python, SESSION_MANAGER_PY, tmp_path)
         for f in funcs:
-            assert f["func"].strip(), f"func_name={f['func_name']} の func フィールドが空"
+            assert f["func"].strip(), (
+                f"func_name={f['func_name']} の func フィールドが空"
+            )
 
     def test_top_level_function_not_prefixed(self, parser_python, tmp_path):
         """トップレベル関数にはクラス名プレフィックスが付かない。"""
