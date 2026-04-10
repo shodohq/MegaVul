@@ -50,8 +50,8 @@ class ParserJavaScript(ParserBase):
             for j, other in enumerate(func_nodes):
                 if i != j:
                     if (
-                        other.start_point[0] <= s.start_point[0]
-                        and other.end_point[0] >= s.end_point[0]
+                        other.start_point <= s.start_point
+                        and other.end_point >= s.end_point
                         and (other.start_point, other.end_point)
                         != (s.start_point, s.end_point)
                     ):

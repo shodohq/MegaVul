@@ -18,6 +18,7 @@ FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "parser"
 
 # 合成フィクスチャ（関数8つ、各種別を網羅）
 SAMPLE_JS = FIXTURES_DIR / "sample.js"
+MINIFIED_JS = FIXTURES_DIR / "minified.js"
 
 
 # ---- セッションスコープの parser fixture -------------------------------------------
@@ -151,3 +152,39 @@ class TestParserJavaScriptSample:
             assert isinstance(p[0], str)  # type (JS は常に空文字列)
             assert isinstance(p[1], str)  # name
             assert isinstance(p[2], int)  # insert_idx
+
+
+# ---- minified.js テスト（同一行に並ぶトップレベル関数の包含誤判定バグ）-----------
+
+
+class TestParserJavaScriptMinified:
+    """
+    minified.js: 同一行に2つのトップレベル関数が並ぶケース。
+      function foo(a,b){return a+b} function bar(x){return x*2}
+
+    find_function_nodes() の包含判定が行番号のみ (start_point[0]/end_point[0]) で
+    行われているため、同一行の別関数が互いに「内包されている」と誤判定され、
+    両方が欠落するバグを検出するテスト。
+    """
+
+    def test_extracts_both_toplevel_functions(self, parser_javascript, tmp_path):
+        """同一行に並ぶ foo・bar の両方が抽出される。"""
+        funcs = run_parse_file(parser_javascript, MINIFIED_JS, tmp_path)
+        names = [f["func_name"] for f in funcs]
+        assert "foo" in names, f"foo が抽出されていない (got: {names})"
+        assert "bar" in names, f"bar が抽出されていない (got: {names})"
+        assert len(funcs) == 2, f"関数数が2つであるはずが {len(funcs)} つ (got: {names})"
+
+    def test_foo_params(self, parser_javascript, tmp_path):
+        """foo(a, b) のパラメータが正しく抽出される。"""
+        funcs = run_parse_file(parser_javascript, MINIFIED_JS, tmp_path)
+        f = func_by_name(funcs, "foo")
+        names = [p[1] for p in f["parameter_list"]]
+        assert names == ["a", "b"]
+
+    def test_bar_params(self, parser_javascript, tmp_path):
+        """bar(x) のパラメータが正しく抽出される。"""
+        funcs = run_parse_file(parser_javascript, MINIFIED_JS, tmp_path)
+        f = func_by_name(funcs, "bar")
+        names = [p[1] for p in f["parameter_list"]]
+        assert names == ["x"]
