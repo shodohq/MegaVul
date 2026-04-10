@@ -206,8 +206,29 @@ class TestFileFilter(GlobalFilter):
             return self.filter_go_test_file(file)
         elif crawling_language == CrawlingType.Python:
             return self.filter_python_test_file(file)
+        elif crawling_language == CrawlingType.JavaScript:
+            return self.filter_javascript_test_file(file)
         # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテストファイルの判定ロジックを実装する
         return False
+
+    def filter_javascript_test_file(self, file: CommitFile) -> bool:
+        file_path = file.file_path
+        path_parts = file_path.split("/")
+        for part in path_parts[:-1]:
+            if part in ("__tests__", "test", "tests", "spec", "__mocks__"):
+                return True
+        file_name = path_parts[-1]
+        test_suffixes = (
+            ".test.js",
+            ".spec.js",
+            ".test.mjs",
+            ".spec.mjs",
+            ".test.cjs",
+            ".spec.cjs",
+            ".test.jsx",
+            ".spec.jsx",
+        )
+        return any(file_name.endswith(s) for s in test_suffixes)
 
     def filter_go_test_file(self, file: CommitFile) -> bool:
         # Go test files always end with _test.go
@@ -828,9 +849,29 @@ class TestFunctionFilter(LocalFilter):
             return self.go_filter(func_name)
         elif crawling_language == CrawlingType.Python:
             return self.python_filter(func_name)
+        elif crawling_language == CrawlingType.JavaScript:
+            return self.javascript_filter(func_name)
         # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してテスト関数の判定ロジックを実装する
         else:
             return False
+
+    def javascript_filter(self, func_name: str) -> bool:
+        base_name = func_name.split(".")[-1]
+        test_func_names = {
+            "describe",
+            "it",
+            "test",
+            "beforeEach",
+            "afterEach",
+            "beforeAll",
+            "afterAll",
+            "xdescribe",
+            "xit",
+            "xtest",
+            "fdescribe",
+            "fit",
+        }
+        return base_name in test_func_names or base_name.startswith("test")
 
     def go_filter(self, func_name: str) -> bool:
         # Go test functions start with Test or Benchmark, and ExampleXxx

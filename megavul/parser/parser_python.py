@@ -194,11 +194,19 @@ class ParserPython(ParserBase):
                 elif name_part.type == "identifier":
                     params.append((type_str, _node_text(file_lines, name_part), -1))
                 elif name_part.type == "list_splat_pattern":
-                    inner = name_part.named_children[0] if name_part.named_children else None
+                    inner = (
+                        name_part.named_children[0]
+                        if name_part.named_children
+                        else None
+                    )
                     name_str = f"*{_node_text(file_lines, inner)}" if inner else "*"
                     params.append((type_str, name_str, -1))
                 elif name_part.type == "dictionary_splat_pattern":
-                    inner = name_part.named_children[0] if name_part.named_children else None
+                    inner = (
+                        name_part.named_children[0]
+                        if name_part.named_children
+                        else None
+                    )
                     name_str = f"**{_node_text(file_lines, inner)}" if inner else "**"
                     params.append((type_str, name_str, -1))
 

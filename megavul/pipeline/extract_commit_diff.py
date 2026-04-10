@@ -19,6 +19,7 @@ from megavul.git_platform.common import (
 from megavul.parser.parser_java import ParserJava
 from megavul.parser.parser_go import ParserGo
 from megavul.parser.parser_python import ParserPython
+from megavul.parser.parser_javascript import ParserJavaScript
 from megavul.parser.parser_util import ExtractedFunction
 from megavul.pipeline.extract_commit_diff_filter import (
     run_filters,
@@ -119,6 +120,8 @@ def determine_all_repo_types(
         elif crawling_language == CrawlingType.Python:
             # for python projects, all files are python
             repo_type_mapping[repo_name] = RepoType.Python
+        elif crawling_language == CrawlingType.JavaScript:
+            repo_type_mapping[repo_name] = RepoType.JavaScript
         # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して repo_type_mapping に適切な RepoType を設定する
         else:
             raise RuntimeError(f"{crawling_language} is not supported")
@@ -127,6 +130,12 @@ def determine_all_repo_types(
 
 
 def get_file_type(repo_type: RepoType, f_name: str, fp: Path) -> str:
+    """
+    ファイルの言語種別を文字列で返す（例: "c", "cpp", "java", "go", "javascript"）。
+    返された文字列は Parser.can_handle_this_language() に渡され、どのパーサーを使うか振り分けるために使われる。
+    C/C++ のみ、.h ヘッダーファイルが両言語で共有されるため linguist で内容判定を行う。
+    Java / Go / JavaScript は単一言語なので常に固定文字列を返す。
+    """
     f_ext = f_name.split(".")[-1]
 
     if crawling_language == CrawlingType.C_CPP:
@@ -154,7 +163,9 @@ def get_file_type(repo_type: RepoType, f_name: str, fp: Path) -> str:
         return "go"
     elif crawling_language == CrawlingType.Python:
         return "python"
-    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加してファイルタイプ文字列を返す
+    elif crawling_language == CrawlingType.JavaScript:
+        return "javascript"
+    # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加する
 
     raise RuntimeError(f"Unknown file type for {fp}")
 
@@ -172,6 +183,8 @@ def parse_all_commit_files(
         parser_list = [ParserGo(global_logger)]
     elif crawling_language == CrawlingType.Python:
         parser_list = [ParserPython(global_logger)]
+    elif crawling_language == CrawlingType.JavaScript:
+        parser_list = [ParserJavaScript(global_logger)]
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の Parser インスタンスを parser_list に設定する
     #   対応する megavul/parser/parser_<lang>.py も新規作成が必要
     else:
@@ -429,6 +442,8 @@ def build_parser():
         parser_list = [ParserGo(global_logger)]
     elif crawling_language == CrawlingType.Python:
         parser_list = [ParserPython(global_logger)]
+    elif crawling_language == CrawlingType.JavaScript:
+        parser_list = [ParserJavaScript(global_logger)]
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の Parser インスタンスを設定する
     else:
         raise RuntimeError(f"Parser not found for {crawling_language}")

@@ -172,6 +172,7 @@ CppFileExtension = ["cc", "cpp", "cxx", "hpp", "hxx", "hh"]
 JavaFileExtension = ["java"]
 GoFileExtension = ["go"]
 PythonFileExtension = ["py"]
+JavaScriptFileExtension = ["js", "mjs", "cjs", "jsx"]
 # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには拡張子リストを追加する
 AcceptedFileExtension: list[str] = [
     *HeaderExtension,
@@ -194,6 +195,9 @@ def select_file_extension():
     elif crawling_language == CrawlingType.Python:
         global_logger.info("Selecting Python file extension filter...")
         AcceptedFileExtension = [*PythonFileExtension]
+    elif crawling_language == CrawlingType.JavaScript:
+        global_logger.info("Selecting JavaScript file extension filter...")
+        AcceptedFileExtension = [*JavaScriptFileExtension]
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して AcceptedFileExtension を設定する
     else:
         # extend other programming languages

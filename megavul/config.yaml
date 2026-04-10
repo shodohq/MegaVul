@@ -13,7 +13,7 @@ dependencies:
 
 crawling_language:
   # ADD_MORE_LANGUAGE_NOTE: ここの凡例を変える
-  python  # [c_cpp, java, go, python]
+  javascript  # [c_cpp, java, go, python, javascript]
 
 log_level:
   DEBUG # [DEBUG, INFO, WARNING, ERROR]

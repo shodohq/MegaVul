@@ -351,8 +351,8 @@ def build_tree_sitter_language(language_name: str, debug_mode=False) -> Language
 
         return Language(tspython.language())
 
-    assert language_name in ["c", "cpp", "java", "go"], (
-        "Only support c/cpp/java/go right now, you can modified this assertion to add more language"
+    assert language_name in ["c", "cpp", "java", "go", "javascript"], (
+        "Only support c/cpp/java/go/javascript right now, you can modified this assertion to add more language"
     )
     # now we only support c/cpp tree-sitter, but you can add more languages
     tree_sitter_name = f"tree-sitter-{language_name}"

@@ -8,6 +8,7 @@ from megavul.parser.clike_code_abstracter import CLikeCodeAbstracter
 from megavul.parser.java_code_abstracter import JavaCodeAbstracter
 from megavul.parser.go_code_abstracter import GoCodeAbstracter
 from megavul.parser.python_code_abstracter import PythonCodeAbstracter
+from megavul.parser.javascript_code_abstracter import JavaScriptCodeAbstracter
 from megavul.pipeline.json_save_location import (
     cve_with_parsed_and_filtered_commit_json_path,
     cve_with_graph_abstract_commit_json_path,
@@ -43,6 +44,19 @@ generate_source_dir = (
 )
 graph_save_dir = StorageLocation.result_dir() / crawling_language / "graph"
 
+# cloc/linguist が返す言語名（小文字）と、Joern が期待するファイル拡張子のマッピング。
+# デフォルト（キーなし）は言語名をそのまま拡張子として使う。
+_LANGUAGE_TO_EXT: dict[str, str] = {
+    "javascript": "js",
+    "typescript": "ts",
+    "python": "py",
+}
+
+
+def _language_to_ext(language: str) -> str:
+    """言語名をファイル拡張子に変換する。"""
+    return _LANGUAGE_TO_EXT.get(language, language)
+
 
 def generate_source_file(
     cve_with_commit: list[CveWithCommitInfo], using_cache: bool = False
@@ -66,10 +80,7 @@ def generate_source_file(
 
             for file in commit.files:
                 this_file_dir = this_commit_dir / file.file_name
-                file_language = file.language
-                # 言語名とファイル拡張子が異なる場合のマッピング
-                _lang_to_ext = {"python": "py"}
-                file_ext = _lang_to_ext.get(file_language, file_language)
+                file_ext = _language_to_ext(file.language)
 
                 vul_func: VulnerableFunction
                 for idx, vul_func in enumerate(file.vulnerable_functions):
@@ -88,9 +99,7 @@ def generate_source_file(
                 for idx, non_vul_func in enumerate(file.non_vulnerable_functions):
                     idx = str(idx)
                     func_dir = this_file_dir / "non_vul"
-                    save_str(
-                        non_vul_func.func, func_dir / idx / f"{idx}.{file_ext}"
-                    )
+                    save_str(non_vul_func.func, func_dir / idx / f"{idx}.{file_ext}")
 
     save_data_as_json(index_set, save_index_file)
 
@@ -110,6 +119,8 @@ def run_joern_once(timeout) -> int:
         generate_test = "io.joern.go2cpg.io.MegaVulGraphGenerateForGoTest"
     elif crawling_language == CrawlingType.Python:
         generate_test = "io.joern.pysrc2cpg.MegaVulGraphGenerateForPythonTest"
+    elif crawling_language == CrawlingType.JavaScript:
+        generate_test = "io.joern.jssrc2cpg.io.MegaVulGraphGenerateForJavaScriptTest"
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して Joern のテストクラス名を指定する
     #   対応する Scala テストファイルを megavul/scala/ 以下に新規作成し、Joern に言語フロントエンドが必要
     else:
@@ -146,9 +157,15 @@ def run_joern_build():
     run the following code pre-build the joern and download scala dependencies.
     """
     global_logger.info("Joern begin download dependencies and build")
+    working_dir = StorageLocation.joern_dir()
     my_env = os.environ.copy()
     return_code = subprocess.check_call(
-        "sbt exit", shell=True, text=True, env=my_env, stderr=subprocess.STDOUT
+        "sbt exit",
+        shell=True,
+        text=True,
+        env=my_env,
+        cwd=working_dir,
+        stderr=subprocess.STDOUT,
     )
     if return_code != 0:
         raise RuntimeError("Joern build failed. please see the error message")
@@ -159,7 +176,8 @@ def run_joern():
     run_joern_cnt = 0
     global_logger.info("[Joern] begin run joern!")
     while True:
-        return_code = run_joern_once(70)
+        # for javascript, make it bigger.
+        return_code = run_joern_once(3600)
         if return_code > 0:
             global_logger.info("[Joern] joern completely!")
             break
@@ -201,6 +219,11 @@ def call_joern_to_generate_graph():
             StorageLocation.scala_script_dir()
             / "MegaVulGraphGenerateForPythonTest.scala"
         )
+    elif crawling_language == CrawlingType.JavaScript:
+        joern_script_path = (
+            StorageLocation.scala_script_dir()
+            / "MegaVulGraphGenerateForJavaScriptTest.scala"
+        )
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して言語用の Scala スクリプトパスを指定する
     else:
         raise RuntimeError(f"Scala file not found for {crawling_language}")
@@ -217,6 +240,17 @@ def call_joern_to_generate_graph():
             f"Missing generate graph script file in {joern_script_path}."
         )
         return
+
+    # JGit (used by sbt-dynver) does not support git worktrees and throws
+    # NoWorkTreeException when it finds a worktree entry instead of a normal repo.
+    # Initializing a local git repo inside joern_path prevents JGit from
+    # traversing up to the parent worktree.
+    joern_git_dir = joern_path / ".git"
+    if not joern_git_dir.exists():
+        global_logger.info(
+            f"Initializing local git repo in {joern_path} to workaround JGit worktree issue..."
+        )
+        subprocess.check_call(["git", "init", str(joern_path)])
 
     # copy Test script, we will run this TestFile later
     if crawling_language == CrawlingType.C_CPP:
@@ -247,6 +281,13 @@ def call_joern_to_generate_graph():
         )
         python_test_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy(joern_script_path, python_test_dir / joern_script_name)
+    elif crawling_language == CrawlingType.JavaScript:
+        js_test_dir = (
+            joern_path
+            / "joern-cli/frontends/jssrc2cpg/src/test/scala/io/joern/jssrc2cpg/io"
+        )
+        js_test_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy(joern_script_path, js_test_dir / joern_script_name)
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して Joern フロントエンド内の
     #   適切なテストディレクトリへ Scala スクリプトをコピーする先を指定する
     else:
@@ -420,6 +461,8 @@ def abstracting_functions(logger: logging.Logger, cve: CveWithCommitInfo):
         code_abstracter = GoCodeAbstracter(logger)
     elif crawling_language == CrawlingType.Python:
         code_abstracter = PythonCodeAbstracter(logger)
+    elif crawling_language == CrawlingType.JavaScript:
+        code_abstracter = JavaScriptCodeAbstracter(logger)
     # ADD_MORE_LANGUAGE_NOTE: 対応言語を増やすには elif ブランチを追加して新言語用の CodeAbstracter を設定する
     #   対応する megavul/parser/<lang>_code_abstracter.py も新規作成が必要
     else:
