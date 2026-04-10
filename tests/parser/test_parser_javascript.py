@@ -173,7 +173,9 @@ class TestParserJavaScriptMinified:
         names = [f["func_name"] for f in funcs]
         assert "foo" in names, f"foo が抽出されていない (got: {names})"
         assert "bar" in names, f"bar が抽出されていない (got: {names})"
-        assert len(funcs) == 2, f"関数数が2つであるはずが {len(funcs)} つ (got: {names})"
+        assert len(funcs) == 2, (
+            f"関数数が2つであるはずが {len(funcs)} つ (got: {names})"
+        )
 
     def test_foo_params(self, parser_javascript, tmp_path):
         """foo(a, b) のパラメータが正しく抽出される。"""

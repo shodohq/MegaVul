@@ -6,11 +6,9 @@ JavaScript ファイルが .javascript ではなく .js で保存されること
 """
 
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 from megavul.git_platform.common import (
     CommitFile,
@@ -142,7 +140,9 @@ class TestGenerateSourceFileExtension:
         javascript_files = list(tmp_path.rglob("*.javascript"))
 
         assert len(js_files) > 0, ".js ファイルが生成されていない"
-        assert len(javascript_files) == 0, ".javascript ファイルが生成されてしまっている"
+        assert len(javascript_files) == 0, (
+            ".javascript ファイルが生成されてしまっている"
+        )
 
     def test_vul_before_and_after_both_use_js(self, tmp_path):
         cve = _make_cve(language="javascript", file_name="app.js")
